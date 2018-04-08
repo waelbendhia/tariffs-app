@@ -35,25 +35,28 @@ func Start() {
 	app := Init()
 
 	err := ui.Main(func() {
-		w := elements.MainWindow()
+		w := elements.MainWindow(app)
 		w.OnClosing(func(*ui.Window) bool {
 			ui.Quit()
 			app.Close()
 			return true
 		})
-		t := elements.TariffInput(types.GetLatestTariff(app.db), func(t *types.Tariff, err error) {
-			if err != nil {
-				log.Println(err)
-			} else {
-				log.Println(t)
-				log.Println(t.Insert(app.db))
-			}
-		})
-		w.SetChild(t)
 		w.Show()
 	})
 
 	if err != nil {
 		panic(err)
+	}
+}
+
+func (a *App) GetTariff() *types.Tariff {
+	return types.GetLatestTariff(a.db)
+}
+func (a *App) SetTariff(t *types.Tariff, err error) {
+	if err != nil {
+		log.Println(err)
+	} else {
+		log.Println(t)
+		log.Println(t.Insert(a.db))
 	}
 }
