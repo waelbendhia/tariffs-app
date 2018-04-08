@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/gotk3/gotk3/gtk"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/waelbendhia/tariffs-app/types"
 )
 
