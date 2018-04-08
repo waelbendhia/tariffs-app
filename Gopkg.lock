@@ -3,19 +3,36 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/gotk3/gotk3"
+  name = "github.com/andlabs/ui"
+  packages = ["."]
+  revision = "6c3bda44d3039e3721c06516be3ab9ce9cbd48cc"
+
+[[projects]]
+  name = "github.com/mattn/go-sqlite3"
+  packages = ["."]
+  revision = "6c771bb9887719704b210e87e934f08be014bdb1"
+  version = "v1.6.0"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/therecipe/qt"
   packages = [
-    "cairo",
-    "gdk",
-    "glib",
-    "gtk",
-    "pango"
+    ".",
+    "core",
+    "gui",
+    "widgets"
   ]
-  revision = "56dc11a982c1edadac392b127fa14bb090fc4b00"
+  revision = "b95c8155e70be2501e82bf65636aadc5e414b810"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "017f5e5b1120498f5ce2a913bf019a96531dfa6416727128ab74803c6c7f9c63"
+  inputs-digest = "e60610ee6ecfefa4bd52fc1c0a0f405f56e7112326357ed2d876c036b48dc9bf"
   solver-name = "gps-cdcl"
   solver-version = 1

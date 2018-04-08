@@ -8,3 +8,8 @@ func InitializeDB(db *sql.DB) {
 	createPlaytimesTable(db)
 	createTariffsTable(db)
 }
+
+// CloseRemaining will end all running playtimes
+func CloseRemaining(db *sql.DB) {
+	EndAllOpenPlaytimes(db)
+}

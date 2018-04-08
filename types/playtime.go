@@ -100,6 +100,15 @@ func (p *Playtime) EndPlaytime(db *sql.DB) Playtime {
 	return *pt
 }
 
+// EndAllOpenPlaytimes panics on failure
+func EndAllOpenPlaytimes(db *sql.DB) {
+	_, err := db.Exec(
+		"UPDATE playtimes SET end = CURRENT_TIMESTAMP WHERE end IS NULL;",
+	)
+
+	panicers.WrapAndPanicIfErr(err, "Failed to end all open playtimes")
+}
+
 // CalculatePrice for this playtime with its tariff. If Playtime does not have
 // an end time then it will use the current time to calculate.
 func (p *Playtime) CalculatePrice() int64 {
