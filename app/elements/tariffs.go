@@ -40,6 +40,11 @@ func newTariffElement(app tariffGetterSetter) *ui.Box {
 			} else {
 				submitButton.Disable()
 			}
+			if newTariff.Equals(tariff) {
+				cancelButton.Disable()
+			} else {
+				cancelButton.Enable()
+			}
 		}
 		// getUnit parses unit from unitInput
 		getUnit = func() time.Duration {
@@ -67,11 +72,11 @@ func newTariffElement(app tariffGetterSetter) *ui.Box {
 		}
 	)
 	// Setup our elements based on the latest tariff
-	setTariffUI(tariff)
 	if tariff != nil {
 		newTariff.PricePerUnit = tariff.PricePerUnit
 		newTariff.UnitSize = tariff.UnitSize
 	}
+	setTariffUI(tariff)
 
 	// Set up our inputs to update the newTariff
 	priceInput.OnChanged(func(e *ui.Entry) {
@@ -127,7 +132,6 @@ func newTariffElement(app tariffGetterSetter) *ui.Box {
 	rootBox.SetPadded(true)
 
 	return rootBox
-
 }
 
 func unitSelectionBox() *ui.Combobox {

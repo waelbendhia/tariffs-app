@@ -32,7 +32,9 @@ func GetAllTariffs(db *sql.DB) []Tariff {
 	rows, err := db.Query("SELECT rowid, * FROM tariffs;")
 	panicers.WrapAndPanicIfErr(err, "Could not query tariffs table")
 
-	defer panicers.WrapAndPanicIfErr(rows.Close(), "Error while closing rows")
+	defer func() {
+		panicers.WrapAndPanicIfErr(rows.Close(), "Error while closing rows")
+	}()
 
 	var ts []Tariff
 	for rows.Next() {
@@ -70,11 +72,15 @@ func (t *Tariff) Insert(db *sql.DB) Tariff {
 }
 
 func (t *Tariff) Equals(o interface{}) bool {
-	if o == nil {
-		return t == nil
+	if t == nil || o == nil {
+		return t == nil && o == nil
 	}
+
 	switch v := o.(type) {
 	case *Tariff:
+		if v == nil {
+			return false
+		}
 		return t.UnitSize == v.UnitSize && t.PricePerUnit == v.PricePerUnit
 	case Tariff:
 		return t.UnitSize == v.UnitSize && t.PricePerUnit == v.PricePerUnit
