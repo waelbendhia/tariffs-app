@@ -5,165 +5,161 @@ import (
 	"time"
 
 	"github.com/andlabs/ui"
-	"github.com/pkg/errors"
 	"github.com/waelbendhia/tariffs-app/types"
 )
 
-func tariffElement(app tariffGetterSetter) *ui.Box {
+func newTariffElement(app tariffGetterSetter) *ui.Box {
 	var (
-		defTariff                         = app.GetTariff()
-		inputTariff, getTariff, setTariff = tariffInput()
-		fullBox                           = ui.NewVerticalBox()
-		submit                            = func() { app.SetTariff(getTariff()) }
-		cancel                            = func() { setTariff(app.GetTariff()) }
-		buttonBox                         = buttonBox(cancel, submit)
-	)
-
-	setTariff(defTariff)
-
-	fullBox.Append(inputTariff, false)
-	fullBox.Append(buttonBox, false)
-	return fullBox
-}
-
-func tariffInput() (
-	*ui.Box,
-	func() (*types.Tariff, error),
-	func(*types.Tariff),
-) {
-	var (
-		box                       = ui.NewVerticalBox()
-		price, getPrice, setPrice = tariffPriceInput()
-		unit, getUnit, setUnit    = tariffUnitInput()
-		getTariff                 = func() (*types.Tariff, error) {
-			price, pErr := getPrice()
-			if pErr != nil {
-				return nil, errors.Wrap(pErr, "Invalid input for tariff")
-			}
-			unit, uErr := getUnit()
-			if uErr != nil {
-				return nil, errors.Wrap(uErr, "Invalid input for tariff")
-			}
-			return &types.Tariff{
-				PricePerUnit: price,
-				UnitSize:     unit,
-			}, nil
-		}
-		setTariff = func(t *types.Tariff) {
-			if t != nil {
-				setPrice(t.PricePerUnit)
-				setUnit(t.UnitSize)
-			}
-		}
-	)
-
-	box.Append(price, false)
-	box.Append(unit, false)
-
-	return box, getTariff, setTariff
-
-}
-
-func tariffPriceInput() (
-	*ui.Box,
-	func() (int64, error),
-	func(int64),
-) {
-	var (
-		box      = ui.NewHorizontalBox()
-		input    = ui.NewEntry()
-		setPrice = func(p int64) {
-			if p != -1 {
-				input.SetText(strconv.Itoa(int(p)))
-			}
-		}
-		getPrice = func() (int64, error) {
-			v, err := strconv.Atoi(input.Text())
-			if err != nil {
-				return 0, errors.Errorf("Invalid input for price: %s", input.Text())
-			}
-			return int64(v), nil
-		}
-	)
-	box.Append(ui.NewLabel("Prix en millime"), true)
-	box.Append(input, false)
-	return box, getPrice, setPrice
-}
-
-func tariffUnitInput() (
-	*ui.Box,
-	func() (time.Duration, error),
-	func(time.Duration),
-) {
-	var (
-		box        = ui.NewHorizontalBox()
-		input      = ui.NewEntry()
-		typeSelect = func() *ui.Combobox {
-			s := ui.NewCombobox()
-			s.Append("Heure")
-			s.Append("Minute")
-			s.Append("Seconde")
-			return s
-		}()
-		getUnit = func() (time.Duration, error) {
-			v, err := strconv.Atoi(input.Text())
-			if err != nil {
-				return 0, errors.Errorf("Invalid input for time: %s", input.Text())
-			}
-			var dur time.Duration
-			switch typeSelect.Selected() {
-			case 0:
-				dur = time.Duration(v) * time.Hour
-			case 1:
-				dur = time.Duration(v) * time.Minute
-			case 2:
-				dur = time.Duration(v) * time.Second
-			default:
-				return 0, errors.New("No time type selected")
-			}
-			return dur, nil
-		}
-		setUnit = func(u time.Duration) {
-			if u != -1 {
-				switch {
-				case u >= time.Hour:
-					typeSelect.SetSelected(0)
-					input.SetText(strconv.Itoa(int(u / time.Hour)))
-				case u >= time.Minute:
-					typeSelect.SetSelected(1)
-					input.SetText(strconv.Itoa(int(u / time.Minute)))
-				default:
-					typeSelect.SetSelected(2)
-					input.SetText(strconv.Itoa(int(u)))
-				}
-			}
-		}
-	)
-
-	box.Append(ui.NewLabel("Unite de tariffation"), true)
-	box.Append(input, false)
-	box.Append(typeSelect, false)
-
-	return box, getUnit, setUnit
-}
-func buttonBox(cancel, submit func()) *ui.Box {
-	var (
+		// Root Box will hold all the UI elements for tariff selection
+		rootBox = ui.NewVerticalBox()
+		// These are the UI elements for setting the price per unit
+		priceInputBox = ui.NewHorizontalBox()
+		priceLabel    = ui.NewLabel("Prix en millime")
+		priceInput    = ui.NewEntry()
+		// These are the UI elements for setting the unit for tarification
+		unitInputBox  = ui.NewHorizontalBox()
+		unitLabel     = ui.NewLabel("Par")
+		unitInput     = ui.NewEntry()
+		unitSelection = unitSelectionBox()
+		// These are the UI elements for the dialog buttons
 		buttonBox    = ui.NewHorizontalBox()
 		cancelButton = ui.NewButton("Annuler")
-		sep          = ui.NewLabel("")
+		seperator    = ui.NewLabel("")
 		submitButton = ui.NewButton("Confirmer")
+		// Get the initial state for this UI element
+		tariff = app.GetTariff()
+		// This will hold the user's input
+		newTariff types.Tariff
+		// toggleButton checks if newTariff is valid and disables submitButton
+		// accordinlgy
+		toggleButton = func() {
+			if newTariff.PricePerUnit > 0 &&
+				newTariff.UnitSize > 0 &&
+				!newTariff.Equals(tariff) {
+				submitButton.Enable()
+			} else {
+				submitButton.Disable()
+			}
+		}
+		// getUnit parses unit from unitInput
+		getUnit = func() time.Duration {
+			v, err := strconv.Atoi(unitInput.Text())
+			var unit time.Duration = -1
+			if err == nil && v > 0 {
+				unit = time.Duration(v) *
+					durationFromUnitSelectionInd(unitSelection.Selected())
+			}
+			return unit
+		}
+		// setTariffUI will update all our ui elements with given tariff
+		setTariffUI = func(t *types.Tariff) {
+			if t != nil {
+				priceInput.SetText(strconv.Itoa(int(t.PricePerUnit)))
+				unitInput.SetText(strconv.Itoa(
+					int(t.UnitSize) / int(
+						durationFromUnitSelectionInd(
+							unitSelectionIndFromDuration(t.UnitSize),
+						)),
+				))
+				unitSelection.SetSelected(unitSelectionIndFromDuration(t.UnitSize))
+			}
+			toggleButton()
+		}
 	)
-	buttonBox.Append(cancelButton, false)
-	buttonBox.Append(sep, true)
-	buttonBox.Append(submitButton, false)
+	// Setup our elements based on the latest tariff
+	setTariffUI(tariff)
+	if tariff != nil {
+		newTariff.PricePerUnit = tariff.PricePerUnit
+		newTariff.UnitSize = tariff.UnitSize
+	}
 
-	cancelButton.OnClicked(func(_ *ui.Button) {
-		cancel()
+	// Set up our inputs to update the newTariff
+	priceInput.OnChanged(func(e *ui.Entry) {
+		v, err := strconv.Atoi(e.Text())
+		if err != nil || v <= 0 {
+			newTariff.PricePerUnit = -1
+		} else {
+			newTariff.PricePerUnit = int64(v)
+		}
+		toggleButton()
+	})
+	unitInput.OnChanged(func(_ *ui.Entry) {
+		newTariff.UnitSize = getUnit()
+		toggleButton()
+	})
+	unitSelection.OnSelected(func(_ *ui.Combobox) {
+		newTariff.UnitSize = getUnit()
+		toggleButton()
 	})
 
+	// Define button actions
 	submitButton.OnClicked(func(_ *ui.Button) {
-		submit()
+		t := app.SetTariff(newTariff)
+		tariff = &t
+		toggleButton()
+	})
+	cancelButton.OnClicked(func(_ *ui.Button) {
+		setTariffUI(tariff)
 	})
 
-	return buttonBox
+	// Now we set up our ui elements
+	buttonBox.Append(cancelButton, false)
+	buttonBox.Append(seperator, true)
+	buttonBox.Append(submitButton, true)
+
+	buttonBox.SetPadded(true)
+
+	priceInputBox.Append(priceLabel, true)
+	priceInputBox.Append(priceInput, false)
+
+	priceInputBox.SetPadded(true)
+
+	unitInputBox.Append(unitLabel, true)
+	unitInputBox.Append(unitInput, false)
+	unitInputBox.Append(unitSelection, false)
+
+	unitInputBox.SetPadded(true)
+
+	rootBox.Append(priceInputBox, false)
+	rootBox.Append(unitInputBox, false)
+	rootBox.Append(buttonBox, false)
+
+	rootBox.SetPadded(true)
+
+	return rootBox
+
+}
+
+func unitSelectionBox() *ui.Combobox {
+	c := ui.NewCombobox()
+	c.Append("Seconde")
+	c.Append("Minute")
+	c.Append("Heure")
+	return c
+}
+
+func unitSelectionIndFromDuration(dur time.Duration) int {
+	switch {
+	case dur%time.Hour == 0:
+		return 2
+	case dur%time.Minute == 0:
+		return 1
+	case dur%time.Second == 0:
+		return 0
+	default:
+		return -1
+	}
+}
+
+func durationFromUnitSelectionInd(ind int) time.Duration {
+	switch ind {
+	case 2:
+		return time.Hour
+	case 1:
+		return time.Minute
+	case 0:
+		return time.Second
+	default:
+		return -1
+	}
 }

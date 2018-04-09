@@ -7,7 +7,7 @@ type tariffGetter interface {
 }
 
 type tariffSetter interface {
-	SetTariff(*types.Tariff, error)
+	SetTariff(types.Tariff) types.Tariff
 }
 
 type tariffGetterSetter interface {

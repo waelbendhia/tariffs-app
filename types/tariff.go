@@ -2,6 +2,7 @@ package types
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	panicers "github.com/waelbendhia/tariffs-app/panicers"
@@ -68,6 +69,20 @@ func (t *Tariff) Insert(db *sql.DB) Tariff {
 	return Tariff{id, t.PricePerUnit, t.UnitSize, t.CreatedAt}
 }
 
+func (t *Tariff) Equals(o interface{}) bool {
+	if o == nil {
+		return t == nil
+	}
+	switch v := o.(type) {
+	case *Tariff:
+		return t.UnitSize == v.UnitSize && t.PricePerUnit == v.PricePerUnit
+	case Tariff:
+		return t.UnitSize == v.UnitSize && t.PricePerUnit == v.PricePerUnit
+	default:
+		return false
+	}
+}
+
 func scanTariff(row scanner) *Tariff {
 	t := &Tariff{}
 	err := row.Scan(&t.ID, &t.PricePerUnit, &t.UnitSize, &t.CreatedAt)
@@ -77,4 +92,40 @@ func scanTariff(row scanner) *Tariff {
 	panicers.WrapAndPanicIfErr(err, "Could not scan tariff from row")
 
 	return t
+}
+
+func (t *Tariff) String() string {
+	var (
+		unitInTimeStr int
+		timeStr       string
+	)
+	switch {
+	case t.UnitSize%time.Hour == 0:
+		unitInTimeStr = int(t.UnitSize / time.Hour)
+		if unitInTimeStr > 1 {
+			timeStr = "heure"
+		} else {
+			timeStr = "heures"
+		}
+	case t.UnitSize%time.Minute == 0:
+		unitInTimeStr = int(t.UnitSize / time.Minute)
+		if unitInTimeStr > 1 {
+			timeStr = "minutes"
+		} else {
+			timeStr = "minutes"
+		}
+	default:
+		unitInTimeStr = int(t.UnitSize / time.Second)
+		if unitInTimeStr > 1 {
+			timeStr = "minutes"
+		} else {
+			timeStr = "minutes"
+		}
+	}
+	return fmt.Sprintf(
+		"%d Millimes par %d %s",
+		t.PricePerUnit,
+		unitInTimeStr,
+		timeStr,
+	)
 }

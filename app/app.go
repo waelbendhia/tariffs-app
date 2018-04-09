@@ -52,11 +52,6 @@ func Start() {
 func (a *App) GetTariff() *types.Tariff {
 	return types.GetLatestTariff(a.db)
 }
-func (a *App) SetTariff(t *types.Tariff, err error) {
-	if err != nil {
-		log.Println(err)
-	} else {
-		log.Println(t)
-		log.Println(t.Insert(a.db))
-	}
+func (a *App) SetTariff(t types.Tariff) types.Tariff {
+	return t.Insert(a.db)
 }
