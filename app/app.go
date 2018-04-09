@@ -31,7 +31,6 @@ func (a *App) close() {
 
 func Start() {
 	app := initApp()
-
 	err := ui.Main(func() {
 		w := elements.MainWindow(app)
 		w.OnClosing(func(*ui.Window) bool {

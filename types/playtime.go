@@ -36,23 +36,52 @@ func createPlaytimesTable(db *sql.DB) {
 // GetPlaytimeByID from db. Panics on failure.
 func GetPlaytimeByID(id int64, db *sql.DB) *Playtime {
 	pt := scanPlaytime(
-		db.QueryRow("SELECT rowid, * FROM playtimes WHERE rowid = ?;", id),
+		db.QueryRow(
+			`SELECT
+				p.rowid, p.*,
+				t.rowid, t.*,
+				m.rowid, m.*
+			FROM 
+				playtimes p 
+				INNER JOIN
+					tariffs t  ON p.tariff_id = t.rowid 
+				INNER JOIN
+					machines m ON p.machine_id = m.rowid 
+			WHERE rowid = ?;`,
+			id,
+		),
 	)
-	t := GetTariffByID(pt.Tariff.ID, db)
-	panicers.PanicOn(
-		t == nil,
-		errors.Errorf("Could not retrieve tariff for playtime: %d", pt.ID),
-	)
-
-	pt.Tariff = *t
-	m := GetMachineByID(pt.Machine.ID, db)
-	panicers.PanicOn(
-		t == nil,
-		errors.Errorf("Could not retrieve machine for playtime: %d", pt.ID),
-	)
-
-	pt.Machine = *m
 	return pt
+}
+
+func GetPlaytimeByMachineID(id int64, db *sql.DB) []Playtime {
+	rows, err := db.Query(
+		`SELECT
+			p.rowid, p.*,
+			t.rowid, t.*,
+			m.rowid, m.*
+		FROM 
+			playtimes p
+		INNER JOIN tariffs t  ON p.tariff_id = t.rowid 
+		INNER JOIN machines m ON p.machine_id = m.rowid 
+		WHERE machine_id = ?;`,
+		id,
+	)
+
+	panicers.WrapAndPanicIfErr(err, "Could not get playtimes by machine id: %d", id)
+
+	defer func() {
+		panicers.WrapAndPanicIfErr(rows.Close(), "Error while closing rows")
+	}()
+
+	var pts []Playtime
+	for rows.Next() {
+		pts = append(pts, *scanPlaytime(rows))
+	}
+
+	panicers.WrapAndPanicIfErr(rows.Err(), "Error while querying for playtimes")
+
+	return pts
 }
 
 // Insert playtime in DB, panics on failure.
@@ -124,18 +153,32 @@ func (p *Playtime) CalculatePrice() int64 {
 }
 
 func scanPlaytime(row scanner) *Playtime {
+	var delFlag int
+	// var endTime pq.NullTime
 	pt := &Playtime{}
 	err := row.Scan(
 		&pt.ID,
 		&pt.Start,
-		pt.End,
+		&pt.End,
 		&pt.Tariff.ID,
 		&pt.Machine.ID,
+		&pt.Tariff.ID,
+		&pt.Tariff.PricePerUnit,
+		&pt.Tariff.UnitSize,
+		&pt.Tariff.CreatedAt,
+		&pt.Machine.ID,
+		&pt.Machine.Name,
+		&delFlag,
 	)
 	if err == sql.ErrNoRows {
 		return nil
 	}
 	panicers.WrapAndPanicIfErr(err, "Could not scan playtime from row")
-
+	pt.Machine.deleted = delFlag != 0
+	// if endTime.Valid {
+	// 	pt.End = &endTime.Time
+	// 	}else{
+	// 		pt.End = &endTime.Time
+	// }
 	return pt
 }
