@@ -4,28 +4,41 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/andlabs/ui"
+	"github.com/visualfc/goqt/ui"
 	"github.com/waelbendhia/tariffs-app/types"
 )
 
-func newTariffElement(app tariffGetterSetter) *ui.Box {
+func newTariffElement(app tariffGetterSetter) *ui.QWidget {
 	var (
 		// Root Box will hold all the UI elements for tariff selection
-		rootBox = ui.NewVerticalBox()
+		rootBox, rootLayout = newVBox()
 		// These are the UI elements for setting the price per unit
-		priceInputBox = ui.NewHorizontalBox()
-		priceLabel    = ui.NewLabel("Prix en millime")
-		priceInput    = ui.NewEntry()
+		priceInputBox, priceInputLayout = newHBox()
+		priceInput                      = ui.NewPlainTextEdit()
+		priceLabel                      = ui.NewLabelWithTextParentFlags(
+			"Prix en millime",
+			nil,
+			ui.Qt_Widget,
+		)
 		// These are the UI elements for setting the unit for tarification
-		unitInputBox  = ui.NewHorizontalBox()
-		unitLabel     = ui.NewLabel("Par")
-		unitInput     = ui.NewEntry()
-		unitSelection = unitSelectionBox()
+		unitInputBox, unitInputLayout = newHBox()
+		unitInput                     = ui.NewPlainTextEdit()
+		unitSelection                 = func() *ui.QComboBox {
+			b := ui.NewComboBox()
+			b.AddItem("Seconde")
+			b.AddItem("Minute")
+			b.AddItem("Heure")
+			return b
+		}()
+		unitLabel = ui.NewLabelWithTextParentFlags(
+			"Par",
+			nil,
+			ui.Qt_Widget,
+		)
 		// These are the UI elements for the dialog buttons
-		buttonBox    = ui.NewHorizontalBox()
-		cancelButton = ui.NewButton("Annuler")
-		seperator    = ui.NewLabel("")
-		submitButton = ui.NewButton("Confirmer")
+		buttonBox, buttonLayout = newHBox()
+		cancelButton            = ui.NewPushButtonWithTextParent("Anuller", nil)
+		submitButton            = ui.NewPushButtonWithTextParent("Confirmer", nil)
 		// Get the initial state for this UI element
 		tariff = app.GetTariff()
 		// This will hold the user's input
@@ -36,37 +49,37 @@ func newTariffElement(app tariffGetterSetter) *ui.Box {
 			if newTariff.PricePerUnit > 0 &&
 				newTariff.UnitSize > 0 &&
 				!newTariff.Equals(tariff) {
-				submitButton.Enable()
+				submitButton.SetEnabled(true)
 			} else {
-				submitButton.Disable()
+				submitButton.SetEnabled(false)
 			}
 			if newTariff.Equals(tariff) {
-				cancelButton.Disable()
+				cancelButton.SetEnabled(false)
 			} else {
-				cancelButton.Enable()
+				cancelButton.SetEnabled(true)
 			}
 		}
 		// getUnit parses unit from unitInput
 		getUnit = func() time.Duration {
-			v, err := strconv.Atoi(unitInput.Text())
+			v, err := strconv.Atoi(unitInput.ToPlainText())
 			var unit time.Duration = -1
 			if err == nil && v > 0 {
 				unit = time.Duration(v) *
-					durationFromUnitSelectionInd(unitSelection.Selected())
+					durationFromUnitSelectionInd(unitSelection.CurrentIndex())
 			}
 			return unit
 		}
 		// setTariffUI will update all our ui elements with given tariff
 		setTariffUI = func(t *types.Tariff) {
 			if t != nil {
-				priceInput.SetText(strconv.Itoa(int(t.PricePerUnit)))
-				unitInput.SetText(strconv.Itoa(
+				priceInput.SetPlainText(strconv.Itoa(int(t.PricePerUnit)))
+				unitInput.SetPlainText(strconv.Itoa(
 					int(t.UnitSize) / int(
 						durationFromUnitSelectionInd(
 							unitSelectionIndFromDuration(t.UnitSize),
 						)),
 				))
-				unitSelection.SetSelected(unitSelectionIndFromDuration(t.UnitSize))
+				unitSelection.SetCurrentIndex(unitSelectionIndFromDuration(t.UnitSize))
 			}
 			toggleButton()
 		}
@@ -79,8 +92,8 @@ func newTariffElement(app tariffGetterSetter) *ui.Box {
 	setTariffUI(tariff)
 
 	// Set up our inputs to update the newTariff
-	priceInput.OnChanged(func(e *ui.Entry) {
-		v, err := strconv.Atoi(e.Text())
+	priceInput.OnTextChanged(func() {
+		v, err := strconv.Atoi(priceInput.ToPlainText())
 		if err != nil || v <= 0 {
 			newTariff.PricePerUnit = -1
 		} else {
@@ -88,61 +101,52 @@ func newTariffElement(app tariffGetterSetter) *ui.Box {
 		}
 		toggleButton()
 	})
-	unitInput.OnChanged(func(_ *ui.Entry) {
+	unitInput.OnTextChanged(func() {
 		newTariff.UnitSize = getUnit()
 		toggleButton()
 	})
-	unitSelection.OnSelected(func(_ *ui.Combobox) {
+	unitSelection.OnCurrentIndexChangedWithIndex(func(ind int32) {
 		newTariff.UnitSize = getUnit()
 		toggleButton()
 	})
 
 	// Define button actions
-	submitButton.OnClicked(func(_ *ui.Button) {
+	submitButton.OnClicked(func() {
 		t := app.SetTariff(newTariff)
 		tariff = &t
 		toggleButton()
 	})
-	cancelButton.OnClicked(func(_ *ui.Button) {
+	cancelButton.OnClicked(func() {
 		setTariffUI(tariff)
 	})
 
 	// Now we set up our ui elements
-	buttonBox.Append(cancelButton, false)
-	buttonBox.Append(seperator, true)
-	buttonBox.Append(submitButton, true)
+	buttonLayout.AddWidget(cancelButton)
+	buttonLayout.AddSpacerItem(
+		ui.NewSpacerItem(0, 0, ui.QSizePolicy_Expanding, ui.QSizePolicy_Expanding),
+	)
+	buttonLayout.AddWidget(submitButton)
+	buttonBox.SetMaximumHeight(48)
 
-	buttonBox.SetPadded(true)
+	priceInputLayout.AddWidget(priceLabel)
+	priceInputLayout.AddWidget(priceInput)
+	priceInputBox.SetMaximumHeight(48)
 
-	priceInputBox.Append(priceLabel, true)
-	priceInputBox.Append(priceInput, false)
+	unitInputLayout.AddWidget(unitLabel)
+	unitInputLayout.AddWidget(unitInput)
+	unitInputLayout.AddWidget(unitSelection)
+	unitInputBox.SetMaximumHeight(48)
 
-	priceInputBox.SetPadded(true)
+	rootLayout.AddWidget(priceInputBox)
+	rootLayout.AddWidget(unitInputBox)
+	rootLayout.AddWidget(buttonBox)
 
-	unitInputBox.Append(unitLabel, true)
-	unitInputBox.Append(unitInput, false)
-	unitInputBox.Append(unitSelection, false)
-
-	unitInputBox.SetPadded(true)
-
-	rootBox.Append(priceInputBox, false)
-	rootBox.Append(unitInputBox, false)
-	rootBox.Append(buttonBox, false)
-
-	rootBox.SetPadded(true)
+	rootBox.SetMaximumHeight(224)
 
 	return rootBox
 }
 
-func unitSelectionBox() *ui.Combobox {
-	c := ui.NewCombobox()
-	c.Append("Seconde")
-	c.Append("Minute")
-	c.Append("Heure")
-	return c
-}
-
-func unitSelectionIndFromDuration(dur time.Duration) int {
+func unitSelectionIndFromDuration(dur time.Duration) int32 {
 	switch {
 	case dur%time.Hour == 0:
 		return 2
@@ -155,7 +159,7 @@ func unitSelectionIndFromDuration(dur time.Duration) int {
 	}
 }
 
-func durationFromUnitSelectionInd(ind int) time.Duration {
+func durationFromUnitSelectionInd(ind int32) time.Duration {
 	switch ind {
 	case 2:
 		return time.Hour

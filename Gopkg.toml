@@ -28,3 +28,7 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/visualfc/goqt"
+  revision="8c774d7992330d283ceaa8477c82c5dd072b3db9"

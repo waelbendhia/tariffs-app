@@ -7,6 +7,12 @@ type tariffGetterSetter interface {
 	SetTariff(types.Tariff) types.Tariff
 }
 
+type timer interface {
+	GetOpenPlayTime(machineID int64) *types.Playtime
+	Start(machineID int64) types.Playtime
+	End(ID int64) types.Playtime
+}
+
 type machineCRUDER interface {
 	GetMachines() []types.Machine
 	DeleteMachine(m types.Machine) types.Machine
@@ -14,7 +20,12 @@ type machineCRUDER interface {
 	UpdateMachine(m types.Machine) types.Machine
 }
 
+type machineCRUDERTimer interface {
+	timer
+	machineCRUDER
+}
+
 type app interface {
 	tariffGetterSetter
-	machineCRUDER
+	machineCRUDERTimer
 }

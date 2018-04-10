@@ -47,11 +47,20 @@ func GetPlaytimeByID(id int64, db *sql.DB) *Playtime {
 					tariffs t  ON p.tariff_id = t.rowid 
 				INNER JOIN
 					machines m ON p.machine_id = m.rowid 
-			WHERE rowid = ?;`,
+			WHERE p.rowid = ?;`,
 			id,
 		),
 	)
 	return pt
+}
+
+func GetOpenPlaytimeByMachineID(id int64, db *sql.DB) *Playtime {
+	for _, p := range GetPlaytimeByMachineID(id, db) {
+		if p.End == nil {
+			return &p
+		}
+	}
+	return nil
 }
 
 func GetPlaytimeByMachineID(id int64, db *sql.DB) []Playtime {

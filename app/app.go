@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"log"
 
-	"github.com/andlabs/ui"
+	"github.com/visualfc/goqt/ui"
 	"github.com/waelbendhia/tariffs-app/app/elements"
 	"github.com/waelbendhia/tariffs-app/database"
+	"github.com/waelbendhia/tariffs-app/panicers"
 	"github.com/waelbendhia/tariffs-app/types"
 )
 
@@ -31,19 +32,11 @@ func (a *App) close() {
 
 func Start() {
 	app := initApp()
-	err := ui.Main(func() {
-		w := elements.MainWindow(app)
-		w.OnClosing(func(*ui.Window) bool {
-			ui.Quit()
-			app.close()
-			return true
-		})
-		w.Show()
+	defer app.close()
+	ui.Run(func() {
+		mainWindow := elements.MainWindow(app)
+		mainWindow.Show()
 	})
-
-	if err != nil {
-		panic(err)
-	}
 }
 
 func (a *App) GetTariff() *types.Tariff {
@@ -69,4 +62,23 @@ func (a *App) DeleteMachine(m types.Machine) types.Machine {
 
 func (a *App) UpdateMachine(m types.Machine) types.Machine {
 	return m.Update(a.db)
+}
+
+func (a *App) End(id int64) types.Playtime {
+	pt := types.Playtime{ID: id}
+	return pt.EndPlaytime(a.db)
+}
+
+func (a *App) GetOpenPlayTime(id int64) *types.Playtime {
+	return types.GetOpenPlaytimeByMachineID(id, a.db)
+}
+
+func (a *App) Start(machineID int64) types.Playtime {
+	t := a.GetTariff()
+	pt := types.Playtime{}
+	pt.Machine.ID = machineID
+	pt.Tariff.ID = t.ID
+	ptI, err := pt.Insert(a.db)
+	panicers.WrapAndPanicIfErr(err, "Could not insert pt: %v", pt)
+	return ptI
 }

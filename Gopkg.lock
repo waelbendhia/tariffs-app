@@ -30,9 +30,14 @@
   ]
   revision = "b95c8155e70be2501e82bf65636aadc5e414b810"
 
+[[projects]]
+  name = "github.com/visualfc/goqt"
+  packages = ["ui"]
+  revision = "8c774d7992330d283ceaa8477c82c5dd072b3db9"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e60610ee6ecfefa4bd52fc1c0a0f405f56e7112326357ed2d876c036b48dc9bf"
+  inputs-digest = "00ae500e58a967a8d5cae5e50fd2e16965701345b52387198ed77a68a5378fb9"
   solver-name = "gps-cdcl"
   solver-version = 1

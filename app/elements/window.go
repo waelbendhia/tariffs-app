@@ -1,28 +1,32 @@
 package elements
 
 import (
-	"github.com/andlabs/ui"
+	"github.com/visualfc/goqt/ui"
 )
 
 // MainWindow creates the app's main window
-func MainWindow(app app) *ui.Window {
+func MainWindow(app app) *ui.QMainWindow {
+
 	var (
-		w         = ui.NewWindow("Tariffs", 200, 100, true)
-		tab       = ui.NewTab()
-		firstTab  = ui.NewHorizontalBox()
-		tariff    = newTariffElement(app)
-		seperator = ui.NewHorizontalSeparator()
-		machines  = newMachinesElement(app)
+		w = ui.NewMainWindow()
+		// tab       = ui.NewTab()
+		// firstTab  = ui.NewHorizontalBox()
+		tariff = newTariffElement(app)
+		// seperator = ui.NewHorizontalSeparator()
+		// machines  = newMachinesElement(app)
 	)
 
-	firstTab.Append(machines, true)
-	firstTab.Append(seperator, false)
-	firstTab.Append(tariff, false)
+	w.SetWindowTitle("Tariffs")
+	w.SetCentralWidget(tariff)
 
-	firstTab.SetPadded(true)
+	// firstTab.Append(machines, true)
+	// firstTab.Append(seperator, false)
+	// firstTab.Append(tariff, false)
 
-	tab.Append("Tariff", firstTab)
-	tab.SetMargined(0, true)
-	w.SetChild(tab)
+	// firstTab.SetPadded(true)
+
+	// tab.Append("Tariff", firstTab)
+	// tab.SetMargined(0, true)
+	// w.SetChild(tab)
 	return w
 }
