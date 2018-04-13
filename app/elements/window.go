@@ -11,10 +11,8 @@ func MainWindow(app app) *ui.QMainWindow {
 		w                  = ui.NewMainWindow()
 		tab                = ui.NewTabWidget()
 		suivi, suiviLayout = newHBox()
-		// firstTab  = ui.NewHorizontalBox()
-		tariff = newTariffElement(app)
-		// seperator = ui.NewHorizontalSeparator()
-		machines = newMachinesElement(app)
+		tariff             = newTariffElement(app)
+		machines           = newMachinesElement(app)
 	)
 	w.SetWindowTitle("Tariffs")
 
@@ -25,14 +23,5 @@ func MainWindow(app app) *ui.QMainWindow {
 
 	w.SetCentralWidget(tab)
 
-	// firstTab.Append(machines, true)
-	// firstTab.Append(seperator, false)
-	// firstTab.Append(tariff, false)
-
-	// firstTab.SetPadded(true)
-
-	// tab.Append("Tariff", firstTab)
-	// tab.SetMargined(0, true)
-	// w.SetChild(tab)
 	return w
 }

@@ -2,12 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
-  name = "github.com/andlabs/ui"
-  packages = ["."]
-  revision = "6c3bda44d3039e3721c06516be3ab9ce9cbd48cc"
-
-[[projects]]
   name = "github.com/mattn/go-sqlite3"
   packages = ["."]
   revision = "6c771bb9887719704b210e87e934f08be014bdb1"
@@ -20,17 +14,6 @@
   version = "v0.8.0"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/therecipe/qt"
-  packages = [
-    ".",
-    "core",
-    "gui",
-    "widgets"
-  ]
-  revision = "b95c8155e70be2501e82bf65636aadc5e414b810"
-
-[[projects]]
   name = "github.com/visualfc/goqt"
   packages = ["ui"]
   revision = "8c774d7992330d283ceaa8477c82c5dd072b3db9"
@@ -38,6 +21,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "00ae500e58a967a8d5cae5e50fd2e16965701345b52387198ed77a68a5378fb9"
+  inputs-digest = "dc0fec7ffd255bfc59dd4f416a59c8f07bfd5ee2eabe11b138844cdd6a344d31"
   solver-name = "gps-cdcl"
   solver-version = 1
