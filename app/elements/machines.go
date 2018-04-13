@@ -1,274 +1,140 @@
 package elements
 
 import (
-	"log"
-	"sync"
+	"fmt"
 	"time"
 
-	"github.com/andlabs/ui"
+	"github.com/visualfc/goqt/ui"
 	"github.com/waelbendhia/tariffs-app/types"
 )
 
-type machineSignal int
-
-const (
-	KILL_SIG  = 0
-	START_SIG = 1
-	END_SIG   = 2
-)
-
-func newMachinesElement(app machineCRUDERTimer) *ui.Box {
+func newMachinesElement(app machineCRUDERTimer) *ui.QGroupBox {
 	var (
-		mElemsLookUp = make(map[int64]int)
-		mElemsLock   sync.Mutex
-		rootBox      = ui.NewVerticalBox()
-		label        = ui.NewLabel("Machines:")
+		rootBox, rootBoxLayout = newVGroupBoxWithTitle("Machines:")
 		// Add machine elements
-		addMachineBox     = ui.NewHorizontalBox()
-		addMachineLabel   = ui.NewLabel("Ajouter:")
-		addMachineInput   = ui.NewEntry()
-		addMachineConfirm = ui.NewButton("Confirmer")
-		seperator         = ui.NewHorizontalSeparator()
+		addMachineBox, addMachineBoxLayout = newHBox()
+		addMachineLabel                    = newLabelWithText("Ajouter:")
+		addMachineInput                    = ui.NewPlainTextEdit()
+		addMachineConfirm                  = ui.NewPushButtonWithTextParent("Confirmer", nil)
 		// Machines list
-		machinesListHolder = ui.NewVerticalBox()
+		machineScroller                              = ui.NewScrollArea()
+		machinesListHolder, machinesListHolderLayout = newVBox()
 		// Helper functions
 		toggleAddButton = func() {
-			if addMachineInput.Text() != "" {
-				addMachineConfirm.Enable()
+			if addMachineInput.ToPlainText() != "" {
+				addMachineConfirm.SetEnabled(true)
 			} else {
-				addMachineConfirm.Disable()
+				addMachineConfirm.SetEnabled(false)
 			}
 		}
-		createMachineElement = func(m types.Machine) (
-			*ui.Box,
-			chan<- *types.Playtime,
-			<-chan machineSignal,
-		) {
+		insertMachine = func(m types.Machine) {
 			var (
-				playTimeChan = make(chan *types.Playtime)
-				timerChan    = make(chan *time.Time)
-				signalChan   = make(chan machineSignal)
-				mBox         = ui.NewHorizontalBox()
-				mLabel       = ui.NewLabel(m.Name)
-				mTimer       = ui.NewLabel("")
-				mStartTimer  = ui.NewButton("Commencer")
-				mEndTimer    = ui.NewButton("Arreter")
-				mDelete      = ui.NewButton("Suprimer")
+				mBox, mBoxLayout = newHBox()
+				playtime         = make(chan *types.Playtime, 1)
+				mLabel           = newLabelWithText(m.Name)
+				mTimer           = newLabelWithText("")
+				mSpacer          = ui.NewSpacerItem(
+					0, 0,
+					ui.QSizePolicy_Expanding,
+					ui.QSizePolicy_Expanding,
+				)
+				mStartTimer   = ui.NewPushButtonWithTextParent("Commencer", nil)
+				mEndTimer     = ui.NewPushButtonWithTextParent("Arreter", nil)
+				mDelete       = ui.NewPushButtonWithTextParent("Suprimer", nil)
+				toggleButtons = func() {
+					pt := <-playtime
+					mEndTimer.SetEnabled(pt != nil)
+					mStartTimer.SetEnabled(pt == nil)
+					mDelete.SetEnabled(pt == nil)
+					playtime <- pt
+				}
 			)
-			// This go routine constantly reads from playTimeChan
-			// and updates this element accordingly
-			go func() {
-				for t := range playTimeChan {
-					if t != nil {
-						mTimer.SetText(
-							time.
-								Since(t.Start).
-								Truncate(time.Second).
-								String(),
-						)
-						mTimer.Show()
-						mDelete.Show()
-						timerChan <- &t.Start
-						// This go routine updates the timer display
-						go func() {
-							for start := range timerChan {
-								if start != nil {
-									for {
-										select {
-										case <-time.Tick(time.Second):
-											mTimer.SetText(
-												time.
-													Since(*start).
-													Truncate(time.Second).
-													String(),
-											)
-										case <-timerChan:
-											return
 
-										}
-									}
-								}
-							}
-						}()
-					} else {
-						mTimer.Hide()
-						mDelete.Hide()
-						mStartTimer.Show()
-						timerChan <- nil
-					}
-				}
-				close(timerChan)
-			}()
+			mLabel.SetStyleSheet(`QLabel {font-weight: 900}`)
+			mBoxLayout.AddWidget(mLabel)
 
-			mBox.Append(mLabel, true)
-
-			mEndTimer.OnClicked(func(_ *ui.Button) {
-				signalChan <- START_SIG
-			})
-			mBox.Append(mStartTimer, false)
-			mBox.Append(mTimer, true)
-
-			mEndTimer.OnClicked(func(_ *ui.Button) {
-				signalChan <- END_SIG
-			})
-			mBox.Append(mEndTimer, false)
-
-			mDelete.OnClicked(func(_ *ui.Button) {
-				signalChan <- KILL_SIG
-				close(signalChan)
-			})
-			mBox.Append(mDelete, false)
-			return mBox, playTimeChan, signalChan
-		}
-		machineWatcherRoutine = func(
-			ptChan chan<- *types.Playtime,
-			signalChan <-chan machineSignal,
-			ID int64,
-			mElem *ui.Box,
-		) {
-			for sig := range signalChan {
-				switch sig {
-				case KILL_SIG:
-					close(ptChan)
-					defer mElemsLock.Unlock()
-					mElemsLock.Lock()
-					ind := mElemsLookUp[ID]
-					delete(mElemsLookUp, ID)
-					for k, v := range mElemsLookUp {
-						if v > ind {
-							mElemsLookUp[k] = mElemsLookUp[k] - 1
+			mStartTimer.OnClicked(func() {
+				<-playtime
+				pt := app.Start(m.ID)
+				playtime <- &pt
+				mTimer.SetText("0s")
+				toggleButtons()
+				go func() {
+					for _ = range time.Tick(time.Second) {
+						pt := <-playtime
+						playtime <- pt
+						if pt == nil {
+							mTimer.SetText("")
+							return
 						}
+						mTimer.SetText(
+							time.Since(pt.Start).Truncate(time.Second).String() +
+								fmt.Sprintf(" %d Millimes", pt.CalculatePrice()),
+						)
 					}
-					machinesListHolder.Delete(ind)
-					mElem.Destroy()
-					app.DeleteMachine(types.Machine{ID: ID})
-					return
-				case START_SIG:
-					pt := app.Start(ID)
-					ptChan <- &pt
-				default:
-					pt := app.GetOpenPlayTime(ID)
-					if pt != nil {
-						app.End(pt.ID)
-						ptChan <- nil
-					}
-				}
-			}
+				}()
+			})
+
+			mBoxLayout.AddWidget(mTimer)
+			mBoxLayout.AddSpacerItem(mSpacer)
+			mBoxLayout.AddWidget(mStartTimer)
+
+			mEndTimer.OnClicked(func() {
+				pt := <-playtime
+				app.End(pt.ID)
+				playtime <- nil
+				toggleButtons()
+			})
+
+			mBoxLayout.AddWidget(mEndTimer)
+
+			mDelete.OnClicked(func() {
+				<-playtime
+				close(playtime)
+				app.DeleteMachine(m)
+				mBox.Delete()
+			})
+			playtime <- app.GetOpenPlayTime(m.ID)
+
+			mBoxLayout.AddWidget(mDelete)
+			toggleButtons()
+			mBox.SetFixedHeight(52)
+			machinesListHolderLayout.AddWidget(mBox)
 		}
-		insertMachine = func(i int, m types.Machine) {
-			mElem, ptChan, signalChan := createMachineElement(m)
-			machinesListHolder.Append(mElem, true)
-			go machineWatcherRoutine(ptChan, signalChan, m.ID, mElem)
-			mElemsLock.Lock()
-			mElemsLookUp[m.ID] = i
-			mElemsLock.Unlock()
-		}
-		submitMachine = func() {
-			m := app.AddMachine(types.Machine{Name: addMachineInput.Text()})
-			addMachineInput.SetText("")
-			toggleAddButton()
-			mElemsLock.Lock()
-			highest := 0
-			for _, v := range mElemsLookUp {
-				if v > highest {
-					highest = v
-				}
+		addMachine = func() {
+			if addMachineInput.ToPlainText() != "" {
+				m := app.AddMachine(types.Machine{Name: addMachineInput.ToPlainText()})
+				addMachineInput.SetPlainText("")
+				toggleAddButton()
+				insertMachine(m)
 			}
-			mElemsLock.Unlock()
-			insertMachine(highest+1, m)
 		}
 	)
 
 	// Set up add machine elements
-	addMachineBox.Append(addMachineLabel, false)
-	addMachineBox.Append(addMachineInput, true)
-	addMachineBox.Append(addMachineConfirm, false)
+	addMachineBoxLayout.AddWidget(addMachineLabel)
+	addMachineBoxLayout.AddWidget(addMachineInput)
+	addMachineBoxLayout.AddWidget(addMachineConfirm)
 
-	addMachineBox.SetPadded(true)
-
-	addMachineInput.OnChanged(func(i *ui.Entry) { toggleAddButton() })
+	addMachineInput.OnTextChanged(toggleAddButton)
 
 	toggleAddButton()
 
-	addMachineConfirm.OnClicked(func(_ *ui.Button) { submitMachine() })
+	addMachineInput.InstallEventFilter(newSubmitOnEnterFilter(addMachine))
+	addMachineInput.SetTabChangesFocus(true)
+	addMachineConfirm.OnClicked(addMachine)
 
-	for i, m := range app.GetMachines() {
-		insertMachine(i, m)
+	for _, m := range app.GetMachines() {
+		insertMachine(m)
 	}
 
-	rootBox.Append(label, false)
-	rootBox.Append(addMachineBox, false)
-	rootBox.Append(seperator, false)
-	rootBox.Append(machinesListHolder, true)
+	machinesListHolderLayout.SetAlignment(ui.Qt_AlignTop)
+	machineScroller.SetWidget(machinesListHolder)
+	machineScroller.SetWidgetResizable(true)
+	addMachineBox.SetMaximumHeight(inputHeight)
 
-	rootBox.SetPadded(true)
+	rootBoxLayout.AddWidget(addMachineBox)
+	rootBoxLayout.AddWidget(machineScroller)
 
 	return rootBox
-}
-
-func redrawMachines(
-	app machineCRUDERTimer,
-	machinesListHolder *ui.Box,
-	hasChildrenLock *sync.Mutex,
-	hasChildren *bool,
-) {
-	machinesListBox := ui.NewVerticalBox()
-	for _, m := range app.GetMachines() {
-		func(m types.Machine) {
-			var (
-				playtime    = app.GetOpenPlayTime(m.ID)
-				mBox        = ui.NewHorizontalBox()
-				mLabel      = ui.NewLabel(m.Name)
-				mTimer      = ui.NewLabel("")
-				mStartTimer = ui.NewButton("Commencer")
-				mEndTimer   = ui.NewButton("Arreter")
-				mDelete     = ui.NewButton("Suprimer")
-			)
-			mBox.Append(mLabel, true)
-			mEndTimer.OnClicked(func(_ *ui.Button) {
-				app.End(playtime.ID)
-				redrawMachines(app, machinesListHolder, hasChildrenLock, hasChildren)
-			})
-			mStartTimer.OnClicked(func(_ *ui.Button) {
-				app.Start(m.ID)
-				redrawMachines(app, machinesListHolder, hasChildrenLock, hasChildren)
-			})
-			if playtime == nil {
-				mBox.Append(mStartTimer, false)
-			} else {
-				go func() {
-					for _ = range time.Tick(time.Second) {
-						playtime := app.GetOpenPlayTime(m.ID)
-						if playtime != nil {
-							mTimer.SetText(
-								((time.Since(playtime.Start) / time.Second) * time.Second).
-									String(),
-							)
-							log.Printf("Timing %d", playtime.ID)
-						} else {
-							log.Println("Exiting")
-							return
-						}
-					}
-				}()
-				mBox.Append(mTimer, true)
-				mBox.Append(mEndTimer, false)
-			}
-			mBox.Append(mDelete, false)
-			mDelete.OnClicked(func(_ *ui.Button) {
-				app.DeleteMachine(m)
-				redrawMachines(app, machinesListHolder, hasChildrenLock, hasChildren)
-			})
-			machinesListBox.Append(mBox, false)
-		}(m)
-	}
-	machinesListBox.SetPadded(true)
-	hasChildrenLock.Lock()
-	if *hasChildren {
-		machinesListHolder.Delete(0)
-	} else {
-		*hasChildren = true
-	}
-	machinesListHolder.Append(machinesListBox, true)
-	hasChildrenLock.Unlock()
 }

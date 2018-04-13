@@ -8,33 +8,23 @@ import (
 	"github.com/waelbendhia/tariffs-app/types"
 )
 
-func newTariffElement(app tariffGetterSetter) *ui.QWidget {
+func newTariffElement(app tariffGetterSetter) *ui.QGroupBox {
 	var (
 		// Root Box will hold all the UI elements for tariff selection
-		rootBox, rootLayout = newVBox()
+		rootBox, rootLayout = newVGroupBoxWithTitle("Tariff")
 		// These are the UI elements for setting the price per unit
 		priceInputBox, priceInputLayout = newHBox()
 		priceInput                      = ui.NewPlainTextEdit()
-		priceLabel                      = ui.NewLabelWithTextParentFlags(
-			"Prix en millime",
-			nil,
-			ui.Qt_Widget,
-		)
+		priceLabel                      = newLabelWithText("Prix en millime")
 		// These are the UI elements for setting the unit for tarification
 		unitInputBox, unitInputLayout = newHBox()
 		unitInput                     = ui.NewPlainTextEdit()
-		unitSelection                 = func() *ui.QComboBox {
-			b := ui.NewComboBox()
-			b.AddItem("Seconde")
-			b.AddItem("Minute")
-			b.AddItem("Heure")
-			return b
-		}()
-		unitLabel = ui.NewLabelWithTextParentFlags(
-			"Par",
-			nil,
-			ui.Qt_Widget,
+		unitSelection                 = newComboxBoxWithOptions(
+			"Seconde",
+			"Minute",
+			"Heure",
 		)
+		unitLabel = newLabelWithText("Par")
 		// These are the UI elements for the dialog buttons
 		buttonBox, buttonLayout = newHBox()
 		cancelButton            = ui.NewPushButtonWithTextParent("Anuller", nil)
@@ -46,18 +36,12 @@ func newTariffElement(app tariffGetterSetter) *ui.QWidget {
 		// toggleButton checks if newTariff is valid and disables submitButton
 		// accordinlgy
 		toggleButton = func() {
-			if newTariff.PricePerUnit > 0 &&
-				newTariff.UnitSize > 0 &&
-				!newTariff.Equals(tariff) {
-				submitButton.SetEnabled(true)
-			} else {
-				submitButton.SetEnabled(false)
-			}
-			if newTariff.Equals(tariff) {
-				cancelButton.SetEnabled(false)
-			} else {
-				cancelButton.SetEnabled(true)
-			}
+			submitButton.SetEnabled(
+				newTariff.PricePerUnit > 0 &&
+					newTariff.UnitSize > 0 &&
+					!newTariff.Equals(tariff),
+			)
+			cancelButton.SetEnabled(!newTariff.Equals(tariff))
 		}
 		// getUnit parses unit from unitInput
 		getUnit = func() time.Duration {
@@ -83,6 +67,13 @@ func newTariffElement(app tariffGetterSetter) *ui.QWidget {
 			}
 			toggleButton()
 		}
+		submitTariff = func() {
+			if newTariff.UnitSize > 0 && newTariff.PricePerUnit > 0 && !newTariff.Equals(tariff) {
+				t := app.SetTariff(newTariff)
+				tariff = &t
+				toggleButton()
+			}
+		}
 	)
 	// Setup our elements based on the latest tariff
 	if tariff != nil {
@@ -101,21 +92,21 @@ func newTariffElement(app tariffGetterSetter) *ui.QWidget {
 		}
 		toggleButton()
 	})
+	priceInput.SetTabChangesFocus(true)
 	unitInput.OnTextChanged(func() {
 		newTariff.UnitSize = getUnit()
 		toggleButton()
 	})
+	unitInput.SetTabChangesFocus(true)
+
 	unitSelection.OnCurrentIndexChangedWithIndex(func(ind int32) {
 		newTariff.UnitSize = getUnit()
 		toggleButton()
 	})
-
-	// Define button actions
-	submitButton.OnClicked(func() {
-		t := app.SetTariff(newTariff)
-		tariff = &t
-		toggleButton()
-	})
+	// Define button and input actions
+	priceInput.InstallEventFilter(newSubmitOnEnterFilter(submitTariff))
+	unitInput.InstallEventFilter(newSubmitOnEnterFilter(submitTariff))
+	submitButton.OnClicked(submitTariff)
 	cancelButton.OnClicked(func() {
 		setTariffUI(tariff)
 	})
@@ -126,16 +117,16 @@ func newTariffElement(app tariffGetterSetter) *ui.QWidget {
 		ui.NewSpacerItem(0, 0, ui.QSizePolicy_Expanding, ui.QSizePolicy_Expanding),
 	)
 	buttonLayout.AddWidget(submitButton)
-	buttonBox.SetMaximumHeight(48)
+	buttonBox.SetMaximumHeight(inputHeight)
 
 	priceInputLayout.AddWidget(priceLabel)
 	priceInputLayout.AddWidget(priceInput)
-	priceInputBox.SetMaximumHeight(48)
+	priceInputBox.SetMaximumHeight(inputHeight)
 
 	unitInputLayout.AddWidget(unitLabel)
 	unitInputLayout.AddWidget(unitInput)
 	unitInputLayout.AddWidget(unitSelection)
-	unitInputBox.SetMaximumHeight(48)
+	unitInputBox.SetMaximumHeight(inputHeight)
 
 	rootLayout.AddWidget(priceInputBox)
 	rootLayout.AddWidget(unitInputBox)

@@ -8,16 +8,22 @@ import (
 func MainWindow(app app) *ui.QMainWindow {
 
 	var (
-		w = ui.NewMainWindow()
-		// tab       = ui.NewTab()
+		w                  = ui.NewMainWindow()
+		tab                = ui.NewTabWidget()
+		suivi, suiviLayout = newHBox()
 		// firstTab  = ui.NewHorizontalBox()
 		tariff = newTariffElement(app)
 		// seperator = ui.NewHorizontalSeparator()
-		// machines  = newMachinesElement(app)
+		machines = newMachinesElement(app)
 	)
-
 	w.SetWindowTitle("Tariffs")
-	w.SetCentralWidget(tariff)
+
+	suiviLayout.AddWidget(machines)
+	suiviLayout.AddWidget(tariff)
+
+	tab.AddTabWithWidgetString(suivi, "Suivie")
+
+	w.SetCentralWidget(tab)
 
 	// firstTab.Append(machines, true)
 	// firstTab.Append(seperator, false)

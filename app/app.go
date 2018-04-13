@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 
+	"github.com/pkg/errors"
 	"github.com/visualfc/goqt/ui"
 	"github.com/waelbendhia/tariffs-app/app/elements"
 	"github.com/waelbendhia/tariffs-app/database"
@@ -30,13 +31,19 @@ func (a *App) close() {
 	}
 }
 
-func Start() {
+func Start(done chan bool) {
 	app := initApp()
-	defer app.close()
+
 	ui.Run(func() {
 		mainWindow := elements.MainWindow(app)
+		go func() {
+			<-done
+			mainWindow.Delete()
+		}()
 		mainWindow.Show()
 	})
+
+	app.close()
 }
 
 func (a *App) GetTariff() *types.Tariff {
@@ -75,9 +82,13 @@ func (a *App) GetOpenPlayTime(id int64) *types.Playtime {
 
 func (a *App) Start(machineID int64) types.Playtime {
 	t := a.GetTariff()
+	panicers.PanicOn(
+		t == nil,
+		errors.New("Tried to start play session with no tariff"),
+	)
 	pt := types.Playtime{}
 	pt.Machine.ID = machineID
-	pt.Tariff.ID = t.ID
+	pt.Tariff = *t
 	ptI, err := pt.Insert(a.db)
 	panicers.WrapAndPanicIfErr(err, "Could not insert pt: %v", pt)
 	return ptI

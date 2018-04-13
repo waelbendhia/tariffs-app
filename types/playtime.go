@@ -2,7 +2,6 @@ package types
 
 import (
 	"database/sql"
-	"math"
 	"time"
 
 	"github.com/pkg/errors"
@@ -156,9 +155,14 @@ func (p *Playtime) CalculatePrice() int64 {
 	} else {
 		end = time.Now()
 	}
-	ppu := int64(p.Tariff.PricePerUnit)
-	dur := int64(end.Sub(p.Start))
-	return int64(math.Ceil(float64(ppu*dur) / float64(p.Tariff.UnitSize)))
+	var (
+		ppu = int64(p.Tariff.PricePerUnit)
+		dur = int64(end.Sub(p.Start) / p.Tariff.UnitSize)
+	)
+	if end.Sub(p.Start)%p.Tariff.UnitSize > 0 {
+		dur++
+	}
+	return ppu * dur
 }
 
 func scanPlaytime(row scanner) *Playtime {
