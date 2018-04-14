@@ -5,23 +5,24 @@ import (
 )
 
 // MainWindow creates the app's main window
-func MainWindow(app app) *ui.QMainWindow {
-
+func MainWindow(a app) *ui.QMainWindow {
 	var (
+		aw                 = newAppWrapper(a)
 		w                  = ui.NewMainWindow()
-		tab                = ui.NewTabWidget()
 		suivi, suiviLayout = newHBox()
-		tariff             = newTariffElement(app)
-		machines           = newMachinesElement(app)
+		rightPane          = ui.NewVBoxLayout()
+		tariff             = newTariffElement(aw)
+		machines           = newMachinesElement(aw, aw.tariffChan)
+		history            = newHistoryElement(a)
 	)
 	w.SetWindowTitle("Tariffs")
 
 	suiviLayout.AddWidget(machines)
-	suiviLayout.AddWidget(tariff)
+	rightPane.AddWidget(tariff)
+	rightPane.AddWidget(history)
+	suiviLayout.AddLayout(rightPane)
 
-	tab.AddTabWithWidgetString(suivi, "Suivie")
-
-	w.SetCentralWidget(tab)
-
+	w.SetCentralWidget(suivi)
+	w.OnDestroyed(func() { close(aw.tariffChan) })
 	return w
 }

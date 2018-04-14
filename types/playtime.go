@@ -53,8 +53,8 @@ func GetPlaytimeByID(id int64, db *sql.DB) *Playtime {
 	return pt
 }
 
-func GetOpenPlaytimeByMachineID(id int64, db *sql.DB) *Playtime {
-	for _, p := range GetPlaytimeByMachineID(id, db) {
+func GetOpenPlaytimeByMachineID(db *sql.DB, id int64) *Playtime {
+	for _, p := range GetPlaytimeByMachineID(db, id) {
 		if p.End == nil {
 			return &p
 		}
@@ -62,7 +62,7 @@ func GetOpenPlaytimeByMachineID(id int64, db *sql.DB) *Playtime {
 	return nil
 }
 
-func GetPlaytimeByMachineID(id int64, db *sql.DB) []Playtime {
+func GetPlaytimeByMachineID(db *sql.DB, id int64) []Playtime {
 	rows, err := db.Query(
 		`SELECT
 			p.rowid, p.*,
@@ -89,6 +89,57 @@ func GetPlaytimeByMachineID(id int64, db *sql.DB) []Playtime {
 
 	panicers.WrapAndPanicIfErr(rows.Err(), "Error while querying for playtimes")
 
+	return pts
+}
+
+func GetPlaytimes(
+	db *sql.DB,
+	machineID *int64,
+	minDate *time.Time,
+	maxDate *time.Time,
+) []Playtime {
+	rows, err := db.Query(
+		`SELECT
+				p.rowid, p.*,
+				t.rowid, t.*,
+				m.rowid, m.*
+			FROM
+				playtimes p
+			INNER JOIN tariffs t  ON p.tariff_id = t.rowid
+			INNER JOIN machines m ON p.machine_id = m.rowid
+			WHERE
+				p.end IS NOT NULL
+			AND
+				CASE WHEN :machineID IS NOT NULL 
+					THEN :machineID = p.machine_id
+					ELSE 1
+				END
+			AND
+				CASE WHEN :minDate IS NOT NULL
+					THEN :minDate < p.start
+					ELSE 1
+				END
+			AND 
+				CASE WHEN :maxDate IS NOT NULL
+				  THEN :maxDate > p.end
+					ELSE 1
+				END;`,
+		sql.Named("machineID", machineID),
+		sql.Named("minDate", minDate),
+		sql.Named("maxDate", maxDate),
+	)
+	panicers.WrapAndPanicIfErr(err, "Could not search playtimes")
+
+	defer func() {
+		panicers.WrapAndPanicIfErr(rows.Close(), "Error while closing rows")
+	}()
+
+	var pts []Playtime
+	for rows.Next() {
+		pts = append(pts, *scanPlaytime(rows))
+	}
+
+	panicers.WrapAndPanicIfErr(rows.Err(), "Error while querying for playtimes")
 	return pts
 }
 

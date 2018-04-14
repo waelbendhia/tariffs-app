@@ -68,7 +68,7 @@ func GetAllMachines(db *sql.DB) []Machine {
 }
 
 // GetMachineByID from db, if not found returns nil. Panics on failure.
-func GetMachineByID(id int64, db *sql.DB) *Machine {
+func GetMachineByID(db *sql.DB, id int64) *Machine {
 	return scanMachine(
 		db.QueryRow(
 			"SELECT rowid, * FROM machines WHERE rowid = ? AND deleted = 0;",

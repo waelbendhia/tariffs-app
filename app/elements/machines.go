@@ -2,15 +2,21 @@ package elements
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/visualfc/goqt/ui"
 	"github.com/waelbendhia/tariffs-app/types"
 )
 
-func newMachinesElement(app machineCRUDERTimer) *ui.QGroupBox {
+func newMachinesElement(
+	app machineCRUDERTimer,
+	tariffChan chan *types.Tariff,
+) *ui.QGroupBox {
 	var (
 		rootBox, rootBoxLayout = newVGroupBoxWithTitle("Machines:")
+		shouldEnableLock       sync.RWMutex
+		shouldEnable           = false
 		// Add machine elements
 		addMachineBox, addMachineBoxLayout = newHBox()
 		addMachineLabel                    = newLabelWithText("Ajouter:")
@@ -27,6 +33,8 @@ func newMachinesElement(app machineCRUDERTimer) *ui.QGroupBox {
 				addMachineConfirm.SetEnabled(false)
 			}
 		}
+		mLock         sync.Mutex
+		startButtons  []*ui.QPushButton
 		insertMachine = func(m types.Machine) {
 			var (
 				mBox, mBoxLayout = newHBox()
@@ -44,7 +52,9 @@ func newMachinesElement(app machineCRUDERTimer) *ui.QGroupBox {
 				toggleButtons = func() {
 					pt := <-playtime
 					mEndTimer.SetEnabled(pt != nil)
-					mStartTimer.SetEnabled(pt == nil)
+					shouldEnableLock.RLock()
+					mStartTimer.SetEnabled(shouldEnable && pt == nil)
+					shouldEnableLock.RUnlock()
 					mDelete.SetEnabled(pt == nil)
 					playtime <- pt
 				}
@@ -89,16 +99,34 @@ func newMachinesElement(app machineCRUDERTimer) *ui.QGroupBox {
 			mBoxLayout.AddWidget(mEndTimer)
 
 			mDelete.OnClicked(func() {
-				<-playtime
-				close(playtime)
 				app.DeleteMachine(m)
 				mBox.Delete()
 			})
-			playtime <- app.GetOpenPlayTime(m.ID)
+			pt := app.GetOpenPlayTime(m.ID)
+
+			shouldEnableLock.RLock()
+			mStartTimer.SetEnabled(shouldEnable && pt == nil)
+			shouldEnableLock.RUnlock()
+
+			playtime <- pt
 
 			mBoxLayout.AddWidget(mDelete)
 			toggleButtons()
-			mBox.SetFixedHeight(52)
+			mBox.SetFixedHeight(inputHeight)
+			mBox.OnDestroyed(func() {
+				close(playtime)
+				mLock.Lock()
+				for i, b := range startButtons {
+					if b == mStartTimer {
+						startButtons = append(startButtons[:i], startButtons[i+1:]...)
+						break
+					}
+				}
+				mLock.Unlock()
+			})
+			mLock.Lock()
+			startButtons = append(startButtons, mStartTimer)
+			mLock.Unlock()
 			machinesListHolderLayout.AddWidget(mBox)
 		}
 		addMachine = func() {
@@ -135,6 +163,19 @@ func newMachinesElement(app machineCRUDERTimer) *ui.QGroupBox {
 
 	rootBoxLayout.AddWidget(addMachineBox)
 	rootBoxLayout.AddWidget(machineScroller)
+
+	go func() {
+		for t := range tariffChan {
+			shouldEnableLock.Lock()
+			shouldEnable = t != nil
+			shouldEnableLock.Unlock()
+			mLock.Lock()
+			for _, b := range startButtons {
+				b.SetEnabled(t != nil)
+			}
+			mLock.Unlock()
+		}
+	}()
 
 	return rootBox
 }

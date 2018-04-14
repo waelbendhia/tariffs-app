@@ -1,6 +1,10 @@
 package elements
 
-import "github.com/waelbendhia/tariffs-app/types"
+import (
+	"time"
+
+	"github.com/waelbendhia/tariffs-app/types"
+)
 
 type tariffGetterSetter interface {
 	GetTariff() *types.Tariff
@@ -20,6 +24,14 @@ type machineCRUDER interface {
 	UpdateMachine(m types.Machine) types.Machine
 }
 
+type playtimeSeacher interface {
+	SearchPlaytimes(
+		machineID *int64,
+		minDate *time.Time,
+		maxDate *time.Time,
+	) []types.Playtime
+}
+
 type machineCRUDERTimer interface {
 	timer
 	machineCRUDER
@@ -28,4 +40,29 @@ type machineCRUDERTimer interface {
 type app interface {
 	tariffGetterSetter
 	machineCRUDERTimer
+	playtimeSeacher
+}
+
+type appWrapper struct {
+	app
+	tariffChan chan *types.Tariff
+}
+
+func newAppWrapper(a app) *appWrapper {
+	return &appWrapper{
+		app:        a,
+		tariffChan: make(chan *types.Tariff, 1),
+	}
+}
+
+func (aw *appWrapper) GetTariff() *types.Tariff {
+	t := aw.app.GetTariff()
+	aw.tariffChan <- t
+	return t
+}
+
+func (aw *appWrapper) SetTariff(t types.Tariff) types.Tariff {
+	t = aw.app.SetTariff(t)
+	aw.tariffChan <- &t
+	return t
 }

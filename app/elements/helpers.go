@@ -1,6 +1,8 @@
 package elements
 
 import (
+	"time"
+
 	"github.com/visualfc/goqt/ui"
 )
 
@@ -69,4 +71,15 @@ func (soe *submitOnEnter) OnEvent(obj *ui.QObject, event *ui.QEvent) bool {
 		}
 	}
 	return soe.QObject.Event(event)
+}
+
+func newDateEdit() *ui.QDateEdit {
+	de := ui.NewDateEdit()
+	de.SetDisplayFormat("dd/MM/yyyy")
+	de.SetDate(ui.QDateCurrentDate())
+	return de
+}
+
+func qtDateToTime(dt ui.QDateTime) time.Time {
+	return time.Unix(dt.ToMSecsSinceEpoch()/1000, 0)
 }

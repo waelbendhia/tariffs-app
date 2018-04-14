@@ -3,6 +3,7 @@ package app
 import (
 	"database/sql"
 	"log"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/visualfc/goqt/ui"
@@ -77,7 +78,7 @@ func (a *App) End(id int64) types.Playtime {
 }
 
 func (a *App) GetOpenPlayTime(id int64) *types.Playtime {
-	return types.GetOpenPlaytimeByMachineID(id, a.db)
+	return types.GetOpenPlaytimeByMachineID(a.db, id)
 }
 
 func (a *App) Start(machineID int64) types.Playtime {
@@ -92,4 +93,12 @@ func (a *App) Start(machineID int64) types.Playtime {
 	ptI, err := pt.Insert(a.db)
 	panicers.WrapAndPanicIfErr(err, "Could not insert pt: %v", pt)
 	return ptI
+}
+
+func (a *App) SearchPlaytimes(
+	mID *int64,
+	minDate *time.Time,
+	maxDate *time.Time,
+) []types.Playtime {
+	return types.GetPlaytimes(a.db, mID, minDate, maxDate)
 }

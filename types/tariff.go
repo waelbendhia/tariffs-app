@@ -50,7 +50,7 @@ func GetLatestTariff(db *sql.DB) *Tariff {
 }
 
 // GetTariffByID from db, panics on failure
-func GetTariffByID(id int64, db *sql.DB) *Tariff {
+func GetTariffByID(db *sql.DB, id int64) *Tariff {
 	return scanTariff(db.QueryRow("SELECT rowid, * FROM tariffs WHERE rowid = ?;", id))
 }
 
