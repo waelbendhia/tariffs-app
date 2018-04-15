@@ -38,10 +38,14 @@ func newMachinesElement(
 		insertMachine = func(m types.Machine) {
 			var (
 				mBox, mBoxLayout = newHBox()
-				playtime         = make(chan *types.Playtime, 1)
-				mLabel           = newLabelWithText(m.Name)
-				mTimer           = newLabelWithText("")
-				mSpacer          = ui.NewSpacerItem(
+				playtimeChan     = make(chan *types.Playtime, 1)
+				withPlayTime     = func(f func(*types.Playtime) *types.Playtime) {
+					pt := <-playtimeChan
+					playtimeChan <- f(pt)
+				}
+				mLabel  = newLabelWithText(m.Name)
+				mTimer  = newLabelWithText("")
+				mSpacer = ui.NewSpacerItem(
 					0, 0,
 					ui.QSizePolicy_Expanding,
 					ui.QSizePolicy_Expanding,
@@ -50,13 +54,14 @@ func newMachinesElement(
 				mEndTimer     = ui.NewPushButtonWithTextParent("Arreter", nil)
 				mDelete       = ui.NewPushButtonWithTextParent("Suprimer", nil)
 				toggleButtons = func() {
-					pt := <-playtime
-					mEndTimer.SetEnabled(pt != nil)
-					shouldEnableLock.RLock()
-					mStartTimer.SetEnabled(shouldEnable && pt == nil)
-					shouldEnableLock.RUnlock()
-					mDelete.SetEnabled(pt == nil)
-					playtime <- pt
+					withPlayTime(func(pt *types.Playtime) *types.Playtime {
+						mEndTimer.SetEnabled(pt != nil)
+						shouldEnableLock.RLock()
+						mStartTimer.SetEnabled(shouldEnable && pt == nil)
+						shouldEnableLock.RUnlock()
+						mDelete.SetEnabled(pt == nil)
+						return pt
+					})
 				}
 			)
 
@@ -64,15 +69,19 @@ func newMachinesElement(
 			mBoxLayout.AddWidget(mLabel)
 
 			mStartTimer.OnClicked(func() {
-				<-playtime
-				pt := app.Start(m.ID)
-				playtime <- &pt
+				withPlayTime(func(_ *types.Playtime) *types.Playtime {
+					pt := app.Start(m.ID)
+					return &pt
+				})
 				mTimer.SetText("0s")
 				toggleButtons()
 				go func() {
 					for _ = range time.Tick(time.Second) {
-						pt := <-playtime
-						playtime <- pt
+						var pt *types.Playtime
+						withPlayTime(func(pt2 *types.Playtime) *types.Playtime {
+							pt = pt2
+							return pt2
+						})
 						if pt == nil {
 							mTimer.SetText("")
 							return
@@ -90,9 +99,10 @@ func newMachinesElement(
 			mBoxLayout.AddWidget(mStartTimer)
 
 			mEndTimer.OnClicked(func() {
-				pt := <-playtime
-				app.End(pt.ID)
-				playtime <- nil
+				withPlayTime(func(pt *types.Playtime) *types.Playtime {
+					app.End(pt.ID)
+					return nil
+				})
 				toggleButtons()
 			})
 
@@ -108,13 +118,13 @@ func newMachinesElement(
 			mStartTimer.SetEnabled(shouldEnable && pt == nil)
 			shouldEnableLock.RUnlock()
 
-			playtime <- pt
+			playtimeChan <- pt
 
 			mBoxLayout.AddWidget(mDelete)
 			toggleButtons()
 			mBox.SetFixedHeight(inputHeight)
 			mBox.OnDestroyed(func() {
-				close(playtime)
+				close(playtimeChan)
 				mLock.Lock()
 				for i, b := range startButtons {
 					if b == mStartTimer {

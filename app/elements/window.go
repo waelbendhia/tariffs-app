@@ -6,6 +6,11 @@ import (
 
 // MainWindow creates the app's main window
 func MainWindow(a app) *ui.QMainWindow {
+	// Set input heights based on font metrics
+	f := ui.NewFont()
+	f.SetPointSize(18)
+	inputHeight = ui.NewFontMetrics(f).Height() * 3 / 2
+
 	var (
 		aw                 = newAppWrapper(a)
 		w                  = ui.NewMainWindow()
@@ -15,6 +20,7 @@ func MainWindow(a app) *ui.QMainWindow {
 		machines           = newMachinesElement(aw, aw.tariffChan)
 		history            = newHistoryElement(a)
 	)
+
 	w.SetWindowTitle("Tariffs")
 
 	suiviLayout.AddWidget(machines)
@@ -24,5 +30,6 @@ func MainWindow(a app) *ui.QMainWindow {
 
 	w.SetCentralWidget(suivi)
 	w.OnDestroyed(func() { close(aw.tariffChan) })
+
 	return w
 }

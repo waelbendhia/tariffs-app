@@ -6,8 +6,6 @@ import (
 	"github.com/visualfc/goqt/ui"
 )
 
-const inputHeight int32 = 52
-
 func newHBox() (*ui.QWidget, *ui.QHBoxLayout) {
 	b, l := ui.NewWidget(), ui.NewHBoxLayout()
 	b.SetLayout(l)
@@ -82,4 +80,8 @@ func newDateEdit() *ui.QDateEdit {
 
 func qtDateToTime(dt ui.QDateTime) time.Time {
 	return time.Unix(dt.ToMSecsSinceEpoch()/1000, 0)
+}
+
+func truncateToDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }

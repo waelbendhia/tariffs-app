@@ -12,6 +12,10 @@ func newTariffElement(app tariffGetterSetter) *ui.QGroupBox {
 	var (
 		// Holds the latest tariff
 		tariffChan = make(chan *types.Tariff, 1)
+		withTariff = func(f func(*types.Tariff) *types.Tariff) {
+			t := <-tariffChan
+			tariffChan <- f(t)
+		}
 		// This will hold the user's input
 		newTariff types.Tariff
 		// Root Box will hold all the UI elements for tariff selection
@@ -57,29 +61,30 @@ func newTariffElement(app tariffGetterSetter) *ui.QGroupBox {
 		}
 		// setTariffUI will update all our ui elements with given tariff
 		setTariffUI = func() {
-			t := <-tariffChan
-			if t != nil {
-				priceInput.SetPlainText(strconv.Itoa(int(t.PricePerUnit)))
-				unitInput.SetPlainText(strconv.Itoa(
-					int(t.UnitSize) / int(
-						durationFromUnitSelectionInd(
-							unitSelectionIndFromDuration(t.UnitSize),
-						)),
-				))
-				unitSelection.SetCurrentIndex(unitSelectionIndFromDuration(t.UnitSize))
-			}
-			tariffChan <- t
+			withTariff(func(t *types.Tariff) *types.Tariff {
+				if t != nil {
+					priceInput.SetPlainText(strconv.Itoa(int(t.PricePerUnit)))
+					unitInput.SetPlainText(strconv.Itoa(
+						int(t.UnitSize) / int(
+							durationFromUnitSelectionInd(
+								unitSelectionIndFromDuration(t.UnitSize),
+							)),
+					))
+					unitSelection.SetCurrentIndex(unitSelectionIndFromDuration(t.UnitSize))
+				}
+				return t
+			})
 			toggleButton()
 		}
 		submitTariff = func() {
-			tariff := <-tariffChan
-			if newTariff.UnitSize > 0 &&
-				newTariff.PricePerUnit > 0 &&
-				!newTariff.Equals(tariff) {
-				t := app.SetTariff(newTariff)
-				tariff = &t
-			}
-			tariffChan <- tariff
+			withTariff(func(t *types.Tariff) *types.Tariff {
+				if newTariff.UnitSize > 0 &&
+					newTariff.PricePerUnit > 0 &&
+					!newTariff.Equals(t) {
+					*t = app.SetTariff(newTariff)
+				}
+				return t
+			})
 			toggleButton()
 		}
 	)
@@ -141,7 +146,7 @@ func newTariffElement(app tariffGetterSetter) *ui.QGroupBox {
 	rootLayout.AddWidget(unitInputBox)
 	rootLayout.AddWidget(buttonBox)
 
-	rootBox.SetMaximumHeight(224)
+	rootBox.SetMaximumHeight(inputHeight * 4)
 
 	rootBox.OnDestroyed(func() { close(tariffChan) })
 

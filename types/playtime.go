@@ -53,6 +53,8 @@ func GetPlaytimeByID(id int64, db *sql.DB) *Playtime {
 	return pt
 }
 
+// GetOpenPlaytimeByMachineID retrieve open playtime for machine or null if
+// none are open
 func GetOpenPlaytimeByMachineID(db *sql.DB, id int64) *Playtime {
 	for _, p := range GetPlaytimeByMachineID(db, id) {
 		if p.End == nil {
@@ -62,6 +64,7 @@ func GetOpenPlaytimeByMachineID(db *sql.DB, id int64) *Playtime {
 	return nil
 }
 
+// GetPlaytimeByMachineID retrieve all playtimes for machine
 func GetPlaytimeByMachineID(db *sql.DB, id int64) []Playtime {
 	rows, err := db.Query(
 		`SELECT
@@ -92,6 +95,7 @@ func GetPlaytimeByMachineID(db *sql.DB, id int64) []Playtime {
 	return pts
 }
 
+// GetPlaytimes search playtimes by machineID, minDate and maxDate
 func GetPlaytimes(
 	db *sql.DB,
 	machineID *int64,
@@ -123,7 +127,8 @@ func GetPlaytimes(
 				CASE WHEN :maxDate IS NOT NULL
 				  THEN :maxDate > p.end
 					ELSE 1
-				END;`,
+				END
+			ORDER BY p.start DESC;`,
 		sql.Named("machineID", machineID),
 		sql.Named("minDate", minDate),
 		sql.Named("maxDate", maxDate),

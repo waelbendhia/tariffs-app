@@ -71,6 +71,7 @@ func (t *Tariff) Insert(db *sql.DB) Tariff {
 	return Tariff{id, t.PricePerUnit, t.UnitSize, t.CreatedAt}
 }
 
+// Equals checks if t is equal to o
 func (t *Tariff) Equals(o interface{}) bool {
 	if t == nil || o == nil {
 		return t == nil && o == nil
