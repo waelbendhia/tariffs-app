@@ -12,7 +12,7 @@ import (
 func main() {
 	var (
 		sigs = make(chan os.Signal, 1)
-		done = make(chan bool, 1)
+		done = make(chan struct{}, 1)
 	)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
@@ -20,7 +20,7 @@ func main() {
 		sig := <-sigs
 		log.Println("Received signal")
 		log.Println(sig)
-		done <- true
+		done <- struct{}{}
 	}()
 
 	app.Start(done)

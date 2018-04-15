@@ -101,7 +101,7 @@ func newMachinesElement(app machineCRUDERTimer) (*ui.QGroupBox, func(t *types.Ta
 				mTimer.SetText("0s")
 				toggleButtons()
 				go func() {
-					done := make(chan bool, 1)
+					done := make(chan struct{}, 1)
 					ticker := time.NewTicker(time.Second)
 					for {
 						select {
@@ -110,7 +110,7 @@ func newMachinesElement(app machineCRUDERTimer) (*ui.QGroupBox, func(t *types.Ta
 							timerString := ""
 							if pt == nil {
 								ticker.Stop()
-								done <- true
+								done <- struct{}{}
 							} else {
 								timerString = time.Since(pt.Start).Truncate(time.Second).String() +
 									fmt.Sprintf(" %d Millimes", pt.CalculatePrice())
