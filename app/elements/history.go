@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/visualfc/goqt/ui"
+	"github.com/waelbendhia/tariffs-app/types"
 )
 
 func newHistoryElement(app playtimeSeacher) (*ui.QGroupBox, func()) {
@@ -30,18 +31,16 @@ func newHistoryElement(app playtimeSeacher) (*ui.QGroupBox, func()) {
 			pts := app.SearchPlaytimes(nil, &minDate, &maxDate)
 
 			for _, c := range historyList.Children() {
-				if c.IsWidgetType() && c != nil {
+				if c != nil && c.IsWidgetType() {
 					c.Delete()
 				}
 			}
 
+			historyListLayout.AddWidget(newPTHeader())
 			for _, pt := range pts {
-				historyListLayout.AddWidget(
-					newLabelWithText(
-						fmt.Sprintf("%s %d %v %v", pt.Machine.Name, pt.CalculatePrice(), pt.Start, pt.End),
-					),
-				)
+				historyListLayout.AddWidget(newPTDisplay(pt))
 			}
+			historyListLayout.AddWidget(newPTTotal(pts))
 		}
 	)
 	minDateInput.OnDateTimeChanged(func(dt *ui.QDateTime) {
@@ -91,4 +90,103 @@ func newHistoryElement(app playtimeSeacher) (*ui.QGroupBox, func()) {
 			return min, max
 		})
 	}
+}
+
+func newPTDisplay(pt types.Playtime) *ui.QWidget {
+	var (
+		shortFmt = "02/01/2006 15:04:05"
+		b        = newPTRow(
+			pt.Machine.Name,
+			fmt.Sprintf("%d Millimes", pt.CalculatePrice()),
+			pt.End.Sub(pt.Start).Truncate(time.Second).String(),
+			pt.Start.Format(shortFmt),
+			pt.End.Format(shortFmt),
+		)
+	)
+	return b
+}
+
+func newPTHeader() *ui.QWidget {
+	b := newPTRow(
+		"Jeux",
+		"Prix",
+		"Durée",
+		"Début",
+		"Fin",
+	)
+	b.SetStyleSheet(`QLabel {
+		font-weight: 900;
+		color: rgba(0,0,0,0.6);
+		font-size: 0.8em;
+	}`)
+	return b
+}
+
+func newPTTotal(pts []types.Playtime) *ui.QWidget {
+	b := newPTRow(
+		"Total:",
+		fmt.Sprintf(
+			"%d Millimes",
+			func() int64 {
+				var sum int64
+				for _, pt := range pts {
+					sum += pt.CalculatePrice()
+				}
+				return sum
+			}(),
+		),
+		func() time.Duration {
+			var sum time.Duration
+			for _, pt := range pts {
+				sum += pt.End.Sub(pt.Start)
+			}
+			return sum
+		}().String(),
+		"",
+		"",
+	)
+	b.SetStyleSheet(`QLabel { font-weight: 900 }`)
+	return b
+}
+
+func newPTRow(
+	gameTxt string,
+	priceTxt string,
+	durationTxt string,
+	startTxt string,
+	endTxt string,
+) *ui.QWidget {
+	var (
+		game     = newLabelWithText(gameTxt)
+		price    = newLabelWithText(priceTxt)
+		duration = newLabelWithText(durationTxt)
+		start    = newLabelWithText(startTxt)
+		end      = newLabelWithText(endTxt)
+		oneFr    = ui.NewSizePolicyWithHorizontalVertical(
+			ui.QSizePolicy_Minimum,
+			ui.QSizePolicy_Minimum,
+		)
+		twoFr = ui.NewSizePolicyWithHorizontalVertical(
+			ui.QSizePolicy_Minimum,
+			ui.QSizePolicy_Minimum,
+		)
+		b, bLayout = newHBox()
+	)
+	oneFr.SetHorizontalStretch(1)
+	twoFr.SetHorizontalStretch(2)
+	game.SetSizePolicy(oneFr)
+	price.SetSizePolicy(oneFr)
+	price.SetAlignment(ui.Qt_AlignRight)
+	duration.SetSizePolicy(oneFr)
+	duration.SetAlignment(ui.Qt_AlignRight)
+	start.SetSizePolicy(twoFr)
+	start.SetAlignment(ui.Qt_AlignRight)
+	end.SetSizePolicy(twoFr)
+	end.SetAlignment(ui.Qt_AlignRight)
+	bLayout.AddWidget(game)
+	bLayout.AddWidget(price)
+	bLayout.AddWidget(duration)
+	bLayout.AddWidget(start)
+	bLayout.AddWidget(end)
+	return b
 }
