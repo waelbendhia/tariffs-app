@@ -21,6 +21,7 @@ func OpenSQLite(path string) *sql.DB {
 	return db
 }
 
+// Close db
 func Close(db *sql.DB) {
-	panicers.WrapAndPanicIfErr( db.Close(), "Could not close db")
+	panicers.WrapAndPanicIfErr(db.Close(), "Could not close db")
 }

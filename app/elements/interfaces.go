@@ -21,7 +21,6 @@ type machineCRUDER interface {
 	GetMachines() []types.Machine
 	DeleteMachine(m types.Machine) types.Machine
 	AddMachine(m types.Machine) types.Machine
-	UpdateMachine(m types.Machine) types.Machine
 }
 
 type playtimeSeacher interface {

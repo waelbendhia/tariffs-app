@@ -13,6 +13,8 @@ import (
 	"github.com/waelbendhia/tariffs-app/types"
 )
 
+// App holds the database for the application and methods for interacting with
+// said database
 type App struct{ db *sql.DB }
 
 func initApp() *App {
@@ -32,7 +34,8 @@ func (a *App) close() {
 	}
 }
 
-func Start(done chan bool) {
+// Start the app, close when receive on done
+func Start(done chan struct{}) {
 	app := initApp()
 
 	ui.Run(func() {
@@ -47,40 +50,43 @@ func Start(done chan bool) {
 	app.close()
 }
 
+// GetTariff if set returns nil otherwise
 func (a *App) GetTariff() *types.Tariff {
 	return types.GetLatestTariff(a.db)
 }
 
+// SetTariff to t
 func (a *App) SetTariff(t types.Tariff) types.Tariff {
-	log.Printf("Updating tarrif to: %s", t.String())
 	return t.Insert(a.db)
 }
 
+// AddMachine to database
 func (a *App) AddMachine(m types.Machine) types.Machine {
 	return m.Insert(a.db)
 }
 
+// GetMachines that are not deleted
 func (a *App) GetMachines() []types.Machine {
 	return types.GetAllMachines(a.db)
 }
 
+// DeleteMachine set machine m to deleted
 func (a *App) DeleteMachine(m types.Machine) types.Machine {
 	return m.Delete(a.db)
 }
 
-func (a *App) UpdateMachine(m types.Machine) types.Machine {
-	return m.Update(a.db)
-}
-
+// End playtime with id
 func (a *App) End(id int64) types.Playtime {
 	pt := types.Playtime{ID: id}
 	return pt.EndPlaytime(a.db)
 }
 
+// GetOpenPlayTime for machine with id
 func (a *App) GetOpenPlayTime(id int64) *types.Playtime {
 	return types.GetOpenPlaytimeByMachineID(a.db, id)
 }
 
+// Start a playtime for machine with id
 func (a *App) Start(machineID int64) types.Playtime {
 	t := a.GetTariff()
 	panicers.PanicOn(
@@ -95,6 +101,7 @@ func (a *App) Start(machineID int64) types.Playtime {
 	return ptI
 }
 
+// SearchPlaytimes matching criteria
 func (a *App) SearchPlaytimes(
 	mID *int64,
 	minDate *time.Time,
