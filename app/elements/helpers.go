@@ -85,3 +85,7 @@ func qtDateToTime(dt ui.QDateTime) time.Time {
 func truncateToDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
+
+func newButton(text string) *ui.QPushButton {
+	return ui.NewPushButtonWithTextParent(text, nil)
+}

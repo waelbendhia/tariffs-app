@@ -16,11 +16,13 @@ func MainWindow(a app) *ui.QMainWindow {
 		w                  = ui.NewMainWindow()
 		suivi, suiviLayout = newHBox()
 		rightPane          = ui.NewVBoxLayout()
-		tariff             = newTariffElement(aw)
-		machines           = newMachinesElement(aw, aw.tariffChan)
-		history            = newHistoryElement(a)
+		history            *ui.QGroupBox
+		machines           *ui.QGroupBox
+		tariff             *ui.QGroupBox
 	)
-
+	history, aw.ptUpdateFn = newHistoryElement(aw)
+	machines, aw.trfUpdateFn = newMachinesElement(aw)
+	tariff = newTariffElement(aw)
 	w.SetWindowTitle("Tariffs")
 
 	suiviLayout.AddWidget(machines)
@@ -29,7 +31,6 @@ func MainWindow(a app) *ui.QMainWindow {
 	suiviLayout.AddLayout(rightPane)
 
 	w.SetCentralWidget(suivi)
-	w.OnDestroyed(func() { close(aw.tariffChan) })
 
 	return w
 }

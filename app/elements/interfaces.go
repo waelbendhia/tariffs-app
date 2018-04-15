@@ -45,24 +45,34 @@ type app interface {
 
 type appWrapper struct {
 	app
-	tariffChan chan *types.Tariff
+	trfUpdateFn func(*types.Tariff)
+	ptUpdateFn  func()
 }
 
 func newAppWrapper(a app) *appWrapper {
-	return &appWrapper{
-		app:        a,
-		tariffChan: make(chan *types.Tariff, 1),
-	}
+	return &appWrapper{app: a}
 }
 
 func (aw *appWrapper) GetTariff() *types.Tariff {
 	t := aw.app.GetTariff()
-	aw.tariffChan <- t
+	if aw.trfUpdateFn != nil {
+		aw.trfUpdateFn(t)
+	}
 	return t
 }
 
 func (aw *appWrapper) SetTariff(t types.Tariff) types.Tariff {
 	t = aw.app.SetTariff(t)
-	aw.tariffChan <- &t
+	if aw.trfUpdateFn != nil {
+		aw.trfUpdateFn(&t)
+	}
 	return t
+}
+
+func (aw *appWrapper) End(ID int64) types.Playtime {
+	res := aw.app.End(ID)
+	if aw.ptUpdateFn != nil {
+		aw.ptUpdateFn()
+	}
+	return res
 }

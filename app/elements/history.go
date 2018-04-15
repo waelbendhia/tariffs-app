@@ -7,7 +7,7 @@ import (
 	"github.com/visualfc/goqt/ui"
 )
 
-func newHistoryElement(app playtimeSeacher) *ui.QGroupBox {
+func newHistoryElement(app playtimeSeacher) (*ui.QGroupBox, func()) {
 	var (
 		minDateChan, maxDateChan = make(chan time.Time, 1), make(chan time.Time, 1)
 		withDates                = func(
@@ -30,7 +30,7 @@ func newHistoryElement(app playtimeSeacher) *ui.QGroupBox {
 			pts := app.SearchPlaytimes(nil, &minDate, &maxDate)
 
 			for _, c := range historyList.Children() {
-				if c.IsWidgetType() {
+				if c.IsWidgetType() && c != nil {
 					c.Delete()
 				}
 			}
@@ -44,7 +44,6 @@ func newHistoryElement(app playtimeSeacher) *ui.QGroupBox {
 			}
 		}
 	)
-
 	minDateInput.OnDateTimeChanged(func(dt *ui.QDateTime) {
 		withDates(func(minDate, maxDate time.Time) (time.Time, time.Time) {
 			minDate = qtDateToTime(*dt)
@@ -85,5 +84,11 @@ func newHistoryElement(app playtimeSeacher) *ui.QGroupBox {
 		updateSearch(min, max)
 		return min, max
 	})
-	return rootBox
+
+	return rootBox, func() {
+		withDates(func(min, max time.Time) (time.Time, time.Time) {
+			updateSearch(min, max)
+			return min, max
+		})
+	}
 }

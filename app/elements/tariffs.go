@@ -12,6 +12,7 @@ func newTariffElement(app tariffGetterSetter) *ui.QGroupBox {
 	var (
 		// Holds the latest tariff
 		tariffChan = make(chan *types.Tariff, 1)
+		// withTariff provides a closure that accesses the value in tariffChan
 		withTariff = func(f func(*types.Tariff) *types.Tariff) {
 			t := <-tariffChan
 			tariffChan <- f(t)
@@ -33,21 +34,22 @@ func newTariffElement(app tariffGetterSetter) *ui.QGroupBox {
 			"Heure",
 		)
 		unitLabel = newLabelWithText("Par")
-		// These are the UI elements for the dialog buttons
+		// These are the UI elements for buttons
 		buttonBox, buttonLayout = newHBox()
 		cancelButton            = ui.NewPushButtonWithTextParent("Anuller", nil)
 		submitButton            = ui.NewPushButtonWithTextParent("Confirmer", nil)
 		// toggleButton checks if newTariff is valid and disables submitButton
 		// accordinlgy
 		toggleButton = func() {
-			tariff := <-tariffChan
-			submitButton.SetEnabled(
-				newTariff.PricePerUnit > 0 &&
-					newTariff.UnitSize > 0 &&
-					!newTariff.Equals(tariff),
-			)
-			cancelButton.SetEnabled(!newTariff.Equals(tariff))
-			tariffChan <- tariff
+			withTariff(func(t *types.Tariff) *types.Tariff {
+				submitButton.SetEnabled(
+					newTariff.PricePerUnit > 0 &&
+						newTariff.UnitSize > 0 &&
+						!newTariff.Equals(t),
+				)
+				cancelButton.SetEnabled(!newTariff.Equals(t))
+				return t
+			})
 		}
 		// getUnit parses unit from unitInput
 		getUnit = func() time.Duration {
@@ -81,24 +83,27 @@ func newTariffElement(app tariffGetterSetter) *ui.QGroupBox {
 				if newTariff.UnitSize > 0 &&
 					newTariff.PricePerUnit > 0 &&
 					!newTariff.Equals(t) {
-					*t = app.SetTariff(newTariff)
+					t2 := app.SetTariff(newTariff)
+					t = &t2
 				}
 				return t
 			})
 			toggleButton()
 		}
 	)
+	// First thing is we retrieve the latest tarifft
+	tariffChan <- app.GetTariff()
 	// Setup our elements based on the latest tariff
-
-	tariff := app.GetTariff()
-	if tariff != nil {
-		newTariff.PricePerUnit = tariff.PricePerUnit
-		newTariff.UnitSize = tariff.UnitSize
-	}
-	tariffChan <- tariff
+	withTariff(func(t *types.Tariff) *types.Tariff {
+		if t != nil {
+			newTariff.PricePerUnit = t.PricePerUnit
+			newTariff.UnitSize = t.UnitSize
+		}
+		return t
+	})
 	setTariffUI()
 
-	// Set up our inputs to update the newTariff
+	// Set up our the callbacks on inputs
 	priceInput.OnTextChanged(func() {
 		v, err := strconv.Atoi(priceInput.ToPlainText())
 		if err != nil || v <= 0 {
@@ -108,17 +113,20 @@ func newTariffElement(app tariffGetterSetter) *ui.QGroupBox {
 		}
 		toggleButton()
 	})
-	priceInput.SetTabChangesFocus(true)
 	unitInput.OnTextChanged(func() {
 		newTariff.UnitSize = getUnit()
 		toggleButton()
 	})
-	unitInput.SetTabChangesFocus(true)
 
 	unitSelection.OnCurrentIndexChangedWithIndex(func(ind int32) {
 		newTariff.UnitSize = getUnit()
 		toggleButton()
 	})
+
+	// Set SetTabChangesFocus on our inputs
+	priceInput.SetTabChangesFocus(true)
+	unitInput.SetTabChangesFocus(true)
+
 	// Define button and input actions
 	priceInput.InstallEventFilter(newSubmitOnEnterFilter(submitTariff))
 	unitInput.InstallEventFilter(newSubmitOnEnterFilter(submitTariff))
