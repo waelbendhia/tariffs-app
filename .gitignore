@@ -5,3 +5,4 @@ app.db
 .vscode
 debug
 tariffs-app
+deploy/*

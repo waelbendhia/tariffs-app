@@ -3,82 +3,76 @@ package elements
 import (
 	"time"
 
-	"github.com/visualfc/goqt/ui"
+	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/widgets"
 )
 
-func newHBox() (*ui.QWidget, *ui.QHBoxLayout) {
-	b, l := ui.NewWidget(), ui.NewHBoxLayout()
+func newHBox() (*widgets.QWidget, *widgets.QHBoxLayout) {
+	b, l := widgets.NewQWidget(nil, 0), widgets.NewQHBoxLayout()
 	b.SetLayout(l)
 	return b, l
 }
 
-func newVBox() (*ui.QWidget, *ui.QVBoxLayout) {
-	b, l := ui.NewWidget(), ui.NewVBoxLayout()
+func newVBox() (*widgets.QWidget, *widgets.QVBoxLayout) {
+	b, l := widgets.NewQWidget(nil, 0), widgets.NewQVBoxLayout()
 	b.SetLayout(l)
 	return b, l
 }
 
-func newVGroupBox() (*ui.QGroupBox, *ui.QVBoxLayout) {
-	b, l := ui.NewGroupBox(), ui.NewVBoxLayout()
+func newVGroupBox() (*widgets.QGroupBox, *widgets.QVBoxLayout) {
+	b, l := widgets.NewQGroupBox(nil), widgets.NewQVBoxLayout()
 	b.SetLayout(l)
 	return b, l
 }
 
-func newVGroupBoxWithTitle(title string) (*ui.QGroupBox, *ui.QVBoxLayout) {
-	b, l := ui.NewGroupBoxWithTitleParent(title, nil), ui.NewVBoxLayout()
+func newVGroupBoxWithTitle(title string) (*widgets.QGroupBox, *widgets.QVBoxLayout) {
+	b, l := widgets.NewQGroupBox2(title, nil), widgets.NewQVBoxLayout()
 	b.SetLayout(l)
 	return b, l
 }
 
-func newLabelWithText(label string) *ui.QLabel {
-	return ui.NewLabelWithTextParentFlags(label, nil, ui.Qt_Widget)
+func newLabelWithText(label string) *widgets.QLabel {
+	return widgets.NewQLabel2(label, nil, core.Qt__Widget)
 }
 
-func newComboxBoxWithOptions(options ...string) *ui.QComboBox {
-	b := ui.NewComboBox()
+func newComboxBoxWithOptions(options ...string) *widgets.QComboBox {
+	b := widgets.NewQComboBox(nil)
 	b.AddItems(options)
 	return b
 }
 
-func newVScroller() (*ui.QScrollArea, *ui.QVBoxLayout) {
-	scroller := ui.NewScrollArea()
-	layout := ui.NewVBoxLayout()
+func newVScroller() (*widgets.QScrollArea, *widgets.QVBoxLayout) {
+	scroller := widgets.NewQScrollArea(nil)
+	layout := widgets.NewQVBoxLayout()
 	return scroller, layout
 }
 
 type submitOnEnter struct {
-	ui.QObject
-	this     *ui.QWidget
+	core.QObject
+	this     *widgets.QWidget
 	onSubmit func()
 }
 
-func newSubmitOnEnterFilter(f func()) *submitOnEnter {
-	return &submitOnEnter{onSubmit: f}
+func addOnEnterHandler(watched *widgets.QPlainTextEdit, f func()) {
+	watched.ConnectKeyPressEvent(
+		func(event *gui.QKeyEvent) {
+			if core.Qt__Key(event.Key()) == core.Qt__Key_Return && f != nil {
+				f()
+			} else {
+				watched.KeyPressEventDefault(event)
+			}
+		})
 }
 
-func (soe *submitOnEnter) OnEvent(obj *ui.QObject, event *ui.QEvent) bool {
-	if event.Type() == ui.QEvent_KeyPress {
-		keyEvent := ui.QKeyEvent{
-			QInputEvent: ui.QInputEvent{
-				QEvent: *event,
-			},
-		}
-		if ui.Qt_Key(keyEvent.Key()) == ui.Qt_Key_Return && soe.onSubmit != nil {
-			soe.onSubmit()
-			return true
-		}
-	}
-	return soe.QObject.Event(event)
-}
-
-func newDateEdit() *ui.QDateEdit {
-	de := ui.NewDateEdit()
+func newDateEdit() *widgets.QDateEdit {
+	de := widgets.NewQDateEdit(nil)
 	de.SetDisplayFormat("dd/MM/yyyy")
-	de.SetDate(ui.QDateCurrentDate())
+	de.SetDate(core.QDate_CurrentDate())
 	return de
 }
 
-func qtDateToTime(dt ui.QDateTime) time.Time {
+func qtDateToTime(dt core.QDateTime) time.Time {
 	return time.Unix(dt.ToMSecsSinceEpoch()/1000, 0)
 }
 
@@ -86,6 +80,6 @@ func truncateToDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
-func newButton(text string) *ui.QPushButton {
-	return ui.NewPushButtonWithTextParent(text, nil)
+func newButton(text string) *widgets.QPushButton {
+	return widgets.NewQPushButton2(text, nil)
 }

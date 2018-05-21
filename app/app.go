@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/visualfc/goqt/ui"
+	"github.com/therecipe/qt/widgets"
 	"github.com/waelbendhia/tariffs-app/app/elements"
 	"github.com/waelbendhia/tariffs-app/database"
 	"github.com/waelbendhia/tariffs-app/panicers"
@@ -38,14 +38,16 @@ func (a *App) close() {
 func Start(done chan struct{}) {
 	app := initApp()
 
-	ui.Run(func() {
-		mainWindow := elements.MainWindow(app)
-		go func() {
-			<-done
-			mainWindow.Delete()
-		}()
-		mainWindow.Show()
-	})
+	appUI := widgets.NewQApplication(0, nil)
+
+	mainWindow := elements.MainWindow(app)
+	go func() {
+		<-done
+		mainWindow.DeleteLater()
+	}()
+	mainWindow.Show()
+
+	appUI.Exec()
 
 	app.close()
 }

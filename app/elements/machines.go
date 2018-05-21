@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/visualfc/goqt/ui"
+	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/widgets"
 	"github.com/waelbendhia/tariffs-app/types"
 )
 
-func newMachinesElement(app machineCRUDERTimer) (*ui.QGroupBox, func(t *types.Tariff)) {
+func newMachinesElement(app machineCRUDERTimer) (*widgets.QGroupBox, func(t *types.Tariff)) {
 	var (
 		// root widget and layout
 		rootBox, rootBoxLayout = newVGroupBoxWithTitle("Machines:")
@@ -26,10 +27,10 @@ func newMachinesElement(app machineCRUDERTimer) (*ui.QGroupBox, func(t *types.Ta
 		// Add machine elements
 		addMachineBox, addMachineBoxLayout = newHBox()
 		addMachineLabel                    = newLabelWithText("Ajouter:")
-		addMachineInput                    = ui.NewPlainTextEdit()
+		addMachineInput                    = widgets.NewQPlainTextEdit(nil)
 		addMachineConfirm                  = newButton("Confirmer")
 		// Machines list
-		machineScroller                              = ui.NewScrollArea()
+		machineScroller                              = widgets.NewQScrollArea(nil)
 		machinesListHolder, machinesListHolderLayout = newVBox()
 		// toggleAddButton sets the enabled state of a the add button depending on
 		// the machine name input's value
@@ -38,9 +39,9 @@ func newMachinesElement(app machineCRUDERTimer) (*ui.QGroupBox, func(t *types.Ta
 		}
 		// startButtons holds a slice of references to the startTimer buttons
 		// to all machines
-		startButtons = make(chan []*ui.QPushButton, 1)
+		startButtons = make(chan []*widgets.QPushButton, 1)
 		// withStartButtons provides a close to access startButtons' value
-		withStartButtons = func(f func([]*ui.QPushButton) []*ui.QPushButton) {
+		withStartButtons = func(f func([]*widgets.QPushButton) []*widgets.QPushButton) {
 			startButtons <- f(<-startButtons)
 		}
 		insertMachine = func(m types.Machine) {
@@ -61,10 +62,10 @@ func newMachinesElement(app machineCRUDERTimer) (*ui.QGroupBox, func(t *types.Ta
 				}
 				// label and timer
 				mLabel, mTimer = newLabelWithText(m.Name), newLabelWithText("")
-				mSpacer        = ui.NewSpacerItem(
+				mSpacer        = widgets.NewQSpacerItem(
 					0, 0,
-					ui.QSizePolicy_Expanding,
-					ui.QSizePolicy_Expanding,
+					widgets.QSizePolicy__Expanding,
+					widgets.QSizePolicy__Expanding,
 				)
 				// buttons
 				mStartTimer   = newButton("Commencer")
@@ -81,19 +82,19 @@ func newMachinesElement(app machineCRUDERTimer) (*ui.QGroupBox, func(t *types.Ta
 			playtimeChan <- app.GetOpenPlayTime(m.ID)
 			// insert all widgets
 			mLabel.SetStyleSheet(`QLabel {font-weight: 900}`)
-			mBoxLayout.AddWidget(mLabel)
-			mBoxLayout.AddWidget(mTimer)
+			mBoxLayout.QLayout.AddWidget(mLabel)
+			mBoxLayout.QLayout.AddWidget(mTimer)
 			mBoxLayout.AddSpacerItem(mSpacer)
-			mBoxLayout.AddWidget(mStartTimer)
-			mBoxLayout.AddWidget(mEndTimer)
-			mBoxLayout.AddWidget(mDelete)
+			mBoxLayout.QLayout.AddWidget(mStartTimer)
+			mBoxLayout.QLayout.AddWidget(mEndTimer)
+			mBoxLayout.QLayout.AddWidget(mDelete)
 
 			mStartTimer.SetEnabled(getHasTariff() && getPlayTime() == nil)
 			toggleButtons()
 			mBox.SetFixedHeight(inputHeight)
 
 			// set up button actions
-			mStartTimer.OnClicked(func() {
+			mStartTimer.ConnectClicked(func(_ bool) {
 				withPlayTime(func(_ *types.Playtime) *types.Playtime {
 					pt := app.Start(m.ID)
 					return &pt
@@ -123,21 +124,21 @@ func newMachinesElement(app machineCRUDERTimer) (*ui.QGroupBox, func(t *types.Ta
 					}
 				}()
 			})
-			mEndTimer.OnClicked(func() {
+			mEndTimer.ConnectClicked(func(_ bool) {
 				withPlayTime(func(pt *types.Playtime) *types.Playtime {
 					app.End(pt.ID)
 					return nil
 				})
 				toggleButtons()
 			})
-			mDelete.OnClicked(func() {
+			mDelete.ConnectClicked(func(_ bool) {
 				app.DeleteMachine(m)
-				mBox.Delete()
+				mBox.DeleteLater()
 			})
 
-			mBox.OnDestroyed(func() {
+			mBox.ConnectDestroyQObject(func() {
 				close(playtimeChan)
-				withStartButtons(func(bs []*ui.QPushButton) []*ui.QPushButton {
+				withStartButtons(func(bs []*widgets.QPushButton) []*widgets.QPushButton {
 					for i, b := range bs {
 						if b == mStartTimer {
 							bs = append(bs[:i], bs[i+1:]...)
@@ -147,13 +148,13 @@ func newMachinesElement(app machineCRUDERTimer) (*ui.QGroupBox, func(t *types.Ta
 					return bs
 				})
 			})
-			withStartButtons(func(bs []*ui.QPushButton) []*ui.QPushButton {
+			withStartButtons(func(bs []*widgets.QPushButton) []*widgets.QPushButton {
 				bs = append(bs, mStartTimer)
 				return bs
 			})
-			machinesListHolderLayout.AddWidget(mBox)
+			machinesListHolderLayout.QLayout.AddWidget(mBox)
 		}
-		addMachine = func() {
+		addMachine = func(b bool) {
 			if addMachineInput.ToPlainText() != "" {
 				m := app.AddMachine(types.Machine{Name: addMachineInput.ToPlainText()})
 				addMachineInput.SetPlainText("")
@@ -168,33 +169,33 @@ func newMachinesElement(app machineCRUDERTimer) (*ui.QGroupBox, func(t *types.Ta
 	startButtons <- nil
 
 	// Set up add machine elements
-	addMachineBoxLayout.AddWidget(addMachineLabel)
-	addMachineBoxLayout.AddWidget(addMachineInput)
-	addMachineBoxLayout.AddWidget(addMachineConfirm)
+	addMachineBoxLayout.QLayout.AddWidget(addMachineLabel)
+	addMachineBoxLayout.QLayout.AddWidget(addMachineInput)
+	addMachineBoxLayout.QLayout.AddWidget(addMachineConfirm)
 
-	addMachineInput.OnTextChanged(toggleAddButton)
+	addMachineInput.ConnectTextChanged(toggleAddButton)
 
 	toggleAddButton()
-
-	addMachineInput.InstallEventFilter(newSubmitOnEnterFilter(addMachine))
+	addOnEnterHandler(addMachineInput, func() { addMachine(false) })
 	addMachineInput.SetTabChangesFocus(true)
-	addMachineConfirm.OnClicked(addMachine)
+
+	addMachineConfirm.ConnectClicked(addMachine)
 
 	for _, m := range app.GetMachines() {
 		insertMachine(m)
 	}
 
-	machinesListHolderLayout.SetAlignment(ui.Qt_AlignTop)
+	machinesListHolderLayout.SetAlign(core.Qt__AlignTop)
 	machineScroller.SetWidget(machinesListHolder)
 	machineScroller.SetWidgetResizable(true)
 	addMachineBox.SetMaximumHeight(inputHeight)
 
-	rootBoxLayout.AddWidget(addMachineBox)
-	rootBoxLayout.AddWidget(machineScroller)
+	rootBoxLayout.QLayout.AddWidget(addMachineBox)
+	rootBoxLayout.QLayout.AddWidget(machineScroller)
 
 	return rootBox, func(t *types.Tariff) {
 		setHasTariff(t != nil)
-		withStartButtons(func(bs []*ui.QPushButton) []*ui.QPushButton {
+		withStartButtons(func(bs []*widgets.QPushButton) []*widgets.QPushButton {
 			for _, b := range bs {
 				b.SetEnabled(t != nil)
 			}

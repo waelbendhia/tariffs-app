@@ -1,34 +1,35 @@
 package elements
 
 import (
-	"github.com/visualfc/goqt/ui"
+	"github.com/therecipe/qt/gui"
+	"github.com/therecipe/qt/widgets"
 )
 
 // MainWindow creates the app's main window
-func MainWindow(a app) *ui.QMainWindow {
+func MainWindow(a app) *widgets.QMainWindow {
 	// Set input heights based on font metrics
-	f := ui.NewFont()
+	f := gui.NewQFont()
 	f.SetPointSize(18)
-	inputHeight = ui.NewFontMetrics(f).Height() * 3 / 2
+	inputHeight = gui.NewQFontMetrics(f).Height() * 5 / 3
 
 	var (
 		aw                 = newAppWrapper(a)
-		w                  = ui.NewMainWindow()
+		w                  = widgets.NewQMainWindow(nil, 0)
 		suivi, suiviLayout = newHBox()
-		rightPane          = ui.NewVBoxLayout()
-		history            *ui.QGroupBox
-		machines           *ui.QGroupBox
-		tariff             *ui.QGroupBox
+		rightPane          = widgets.NewQVBoxLayout()
+		history            *widgets.QGroupBox
+		machines           *widgets.QGroupBox
+		tariff             *widgets.QGroupBox
 	)
 	history, aw.ptUpdateFn = newHistoryElement(aw)
 	machines, aw.trfUpdateFn = newMachinesElement(aw)
 	tariff = newTariffElement(aw)
 	w.SetWindowTitle("Tariffs")
 
-	suiviLayout.AddWidget(machines)
-	rightPane.AddWidget(tariff)
-	rightPane.AddWidget(history)
-	suiviLayout.AddLayout(rightPane)
+	suiviLayout.QLayout.AddWidget(machines)
+	rightPane.QLayout.AddWidget(tariff)
+	rightPane.QLayout.AddWidget(history)
+	suiviLayout.AddLayout(rightPane, 0)
 
 	w.SetCentralWidget(suivi)
 

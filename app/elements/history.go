@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/visualfc/goqt/ui"
+	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/widgets"
 	"github.com/waelbendhia/tariffs-app/types"
 )
 
-func newHistoryElement(app playtimeSeacher) (*ui.QGroupBox, func()) {
+func newHistoryElement(app playtimeSeacher) (*widgets.QGroupBox, func()) {
 	var (
 		minDateChan, maxDateChan = make(chan time.Time, 1), make(chan time.Time, 1)
 		withDates                = func(
@@ -25,25 +26,25 @@ func newHistoryElement(app playtimeSeacher) (*ui.QGroupBox, func()) {
 		minDateInput                   = newDateEdit()
 		maxDateLabel                   = newLabelWithText("Date maximum:")
 		maxDateInput                   = newDateEdit()
-		historyScroller                = ui.NewScrollArea()
+		historyScroller                = widgets.NewQScrollArea(nil)
 		historyList, historyListLayout = newVBox()
 		updateSearch                   = func(minDate, maxDate time.Time) {
 			pts := app.SearchPlaytimes(nil, &minDate, &maxDate)
 
 			for _, c := range historyList.Children() {
 				if c != nil && c.IsWidgetType() {
-					c.Delete()
+					c.DeleteLater()
 				}
 			}
 
-			historyListLayout.AddWidget(newPTHeader())
+			historyListLayout.QLayout.AddWidget(newPTHeader())
 			for _, pt := range pts {
-				historyListLayout.AddWidget(newPTDisplay(pt))
+				historyListLayout.QLayout.AddWidget(newPTDisplay(pt))
 			}
-			historyListLayout.AddWidget(newPTTotal(pts))
+			historyListLayout.QLayout.AddWidget(newPTTotal(pts))
 		}
 	)
-	minDateInput.OnDateTimeChanged(func(dt *ui.QDateTime) {
+	minDateInput.ConnectDateTimeChanged(func(dt *core.QDateTime) {
 		withDates(func(minDate, maxDate time.Time) (time.Time, time.Time) {
 			minDate = qtDateToTime(*dt)
 			updateSearch(minDate, maxDate)
@@ -51,7 +52,7 @@ func newHistoryElement(app playtimeSeacher) (*ui.QGroupBox, func()) {
 		})
 		maxDateInput.SetMinimumDateTime(dt)
 	})
-	maxDateInput.OnDateTimeChanged(func(dt *ui.QDateTime) {
+	maxDateInput.ConnectDateTimeChanged(func(dt *core.QDateTime) {
 		withDates(func(minDate, maxDate time.Time) (time.Time, time.Time) {
 			maxDate = qtDateToTime(*dt.AddSecs(3600 * 24))
 			updateSearch(minDate, maxDate)
@@ -62,19 +63,19 @@ func newHistoryElement(app playtimeSeacher) (*ui.QGroupBox, func()) {
 
 	searchBox.SetMaximumHeight(inputHeight)
 	searchBox.SetLayout(searchBoxLayout)
-	searchBoxLayout.AddWidget(minDateLabel)
-	searchBoxLayout.AddWidget(minDateInput)
-	searchBoxLayout.AddWidget(maxDateLabel)
-	searchBoxLayout.AddWidget(maxDateInput)
+	searchBoxLayout.QLayout.AddWidget(minDateLabel)
+	searchBoxLayout.QLayout.AddWidget(minDateInput)
+	searchBoxLayout.QLayout.AddWidget(maxDateLabel)
+	searchBoxLayout.QLayout.AddWidget(maxDateInput)
 
 	historyList.SetLayout(historyListLayout)
-	historyListLayout.SetAlignment(ui.Qt_AlignTop)
+	historyListLayout.SetAlign(core.Qt__AlignTop)
 
 	historyScroller.SetWidget(historyList)
 	historyScroller.SetWidgetResizable(true)
 
-	rootBoxLayout.AddWidget(searchBox)
-	rootBoxLayout.AddWidget(historyScroller)
+	rootBoxLayout.QLayout.AddWidget(searchBox)
+	rootBoxLayout.QLayout.AddWidget(historyScroller)
 
 	rootBox.SetLayout(rootBoxLayout)
 	minDateChan <- truncateToDay(time.Now())
@@ -92,7 +93,7 @@ func newHistoryElement(app playtimeSeacher) (*ui.QGroupBox, func()) {
 	}
 }
 
-func newPTDisplay(pt types.Playtime) *ui.QWidget {
+func newPTDisplay(pt types.Playtime) *widgets.QWidget {
 	var (
 		shortFmt = "02/01/2006 15:04:05"
 		b        = newPTRow(
@@ -106,7 +107,7 @@ func newPTDisplay(pt types.Playtime) *ui.QWidget {
 	return b
 }
 
-func newPTHeader() *ui.QWidget {
+func newPTHeader() *widgets.QWidget {
 	b := newPTRow(
 		"Jeux",
 		"Prix",
@@ -122,7 +123,7 @@ func newPTHeader() *ui.QWidget {
 	return b
 }
 
-func newPTTotal(pts []types.Playtime) *ui.QWidget {
+func newPTTotal(pts []types.Playtime) *widgets.QWidget {
 	b := newPTRow(
 		"Total:",
 		fmt.Sprintf(
@@ -155,20 +156,22 @@ func newPTRow(
 	durationTxt string,
 	startTxt string,
 	endTxt string,
-) *ui.QWidget {
+) *widgets.QWidget {
 	var (
 		game     = newLabelWithText(gameTxt)
 		price    = newLabelWithText(priceTxt)
 		duration = newLabelWithText(durationTxt)
 		start    = newLabelWithText(startTxt)
 		end      = newLabelWithText(endTxt)
-		oneFr    = ui.NewSizePolicyWithHorizontalVertical(
-			ui.QSizePolicy_Minimum,
-			ui.QSizePolicy_Minimum,
+		oneFr    = widgets.NewQSizePolicy2(
+			widgets.QSizePolicy__Minimum,
+			widgets.QSizePolicy__Minimum,
+			widgets.QSizePolicy__DefaultType,
 		)
-		twoFr = ui.NewSizePolicyWithHorizontalVertical(
-			ui.QSizePolicy_Minimum,
-			ui.QSizePolicy_Minimum,
+		twoFr = widgets.NewQSizePolicy2(
+			widgets.QSizePolicy__Minimum,
+			widgets.QSizePolicy__Minimum,
+			widgets.QSizePolicy__DefaultType,
 		)
 		b, bLayout = newHBox()
 	)
@@ -176,17 +179,17 @@ func newPTRow(
 	twoFr.SetHorizontalStretch(2)
 	game.SetSizePolicy(oneFr)
 	price.SetSizePolicy(oneFr)
-	price.SetAlignment(ui.Qt_AlignRight)
+	price.SetAlignment(core.Qt__AlignRight)
 	duration.SetSizePolicy(oneFr)
-	duration.SetAlignment(ui.Qt_AlignRight)
+	duration.SetAlignment(core.Qt__AlignRight)
 	start.SetSizePolicy(twoFr)
-	start.SetAlignment(ui.Qt_AlignRight)
+	start.SetAlignment(core.Qt__AlignRight)
 	end.SetSizePolicy(twoFr)
-	end.SetAlignment(ui.Qt_AlignRight)
-	bLayout.AddWidget(game)
-	bLayout.AddWidget(price)
-	bLayout.AddWidget(duration)
-	bLayout.AddWidget(start)
-	bLayout.AddWidget(end)
+	end.SetAlignment(core.Qt__AlignRight)
+	bLayout.QLayout.AddWidget(game)
+	bLayout.QLayout.AddWidget(price)
+	bLayout.QLayout.AddWidget(duration)
+	bLayout.QLayout.AddWidget(start)
+	bLayout.QLayout.AddWidget(end)
 	return b
 }

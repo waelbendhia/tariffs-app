@@ -14,13 +14,19 @@
   version = "v0.8.0"
 
 [[projects]]
-  name = "github.com/visualfc/goqt"
-  packages = ["ui"]
-  revision = "8c774d7992330d283ceaa8477c82c5dd072b3db9"
+  branch = "master"
+  name = "github.com/therecipe/qt"
+  packages = [
+    ".",
+    "core",
+    "gui",
+    "widgets"
+  ]
+  revision = "7038382d6c7bb5fd3957df56bbedf8ec4ca6b67c"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "dc0fec7ffd255bfc59dd4f416a59c8f07bfd5ee2eabe11b138844cdd6a344d31"
+  inputs-digest = "032133a2217e2466d931b09d72a2390216208999264c6cea4085729b3fdcb315"
   solver-name = "gps-cdcl"
   solver-version = 1

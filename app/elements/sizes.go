@@ -1,3 +1,3 @@
 package elements
 
-var inputHeight int32
+var inputHeight int
